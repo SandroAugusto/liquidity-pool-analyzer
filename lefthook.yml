@@ -1,5 +1,11 @@
 # Git hooks. Installed by `pnpm install` via the "prepare" script.
 # Skip once with `LEFTHOOK=0 git commit …` — and expect CI to catch what you skipped.
+#
+# Known limitation: {staged_files} yields paths, and the tools read the working
+# tree, not the index. With a partially staged file the hook may block a good
+# commit or pass a bad one. We accept this rather than stash/unstash around the
+# checks (which has worse failure modes); CI runs the same checks on the real
+# commit and is the backstop. Stage whole files, or run `pnpm check` yourself.
 
 pre-commit:
   parallel: true
