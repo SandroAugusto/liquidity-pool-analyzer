@@ -7,7 +7,7 @@
  * not forecasts. See docs/adr/0002-continuous-float-model.md.
  */
 
-import { NumericOverflowError } from './errors.js';
+import { NumericOverflowError, ensureFinite, ensurePositiveFinite } from './errors.js';
 
 export class InsufficientDataError extends Error {
   constructor(required: number, received: number) {
@@ -60,15 +60,19 @@ export function mean(values: readonly number[]): number {
     throw new InsufficientDataError(1, 0);
   }
   assertAllFinite(values, 'values');
-  // Incremental (Welford-style) mean: never forms the running sum, so it cannot
-  // overflow for finite inputs where a naive sum would.
+  // Incremental mean with each term divided *before* combining: neither the
+  // running sum nor the difference (v - mu) is ever formed, so no intermediate
+  // can exceed the largest input in magnitude. (The textbook
+  // mu += (v - mu) / n still overflows when v and mu have opposite signs near
+  // Number.MAX_VALUE — found by the property suite.)
   let mu = 0;
   for (let i = 0; i < values.length; i += 1) {
     const v = values[i];
     if (v === undefined) {
       throw new InsufficientDataError(1, 0); // unreachable; satisfies noUncheckedIndexedAccess
     }
-    mu += (v - mu) / (i + 1);
+    const n = i + 1;
+    mu += v / n - mu / n;
   }
   return mu;
 }
@@ -124,7 +128,7 @@ export function dailyVolatility(dailyPrices: readonly number[]): number {
 export function expectedDaysToExit(halfWidth: number, sigma: number): number {
   assertPositiveFinite(halfWidth, 'halfWidth');
   assertPositiveFinite(sigma, 'sigma');
-  return (halfWidth / sigma) ** 2;
+  return ensurePositiveFinite((halfWidth / sigma) ** 2, 'expectedDaysToExit');
 }
 
 /**
@@ -134,7 +138,7 @@ export function expectedDaysToExit(halfWidth: number, sigma: number): number {
 export function halfWidthForHorizon(days: number, sigma: number): number {
   assertPositiveFinite(days, 'days');
   assertPositiveFinite(sigma, 'sigma');
-  return sigma * Math.sqrt(days);
+  return ensurePositiveFinite(sigma * Math.sqrt(days), 'halfWidthForHorizon');
 }
 
 /**
@@ -154,5 +158,8 @@ export function amortisedDivergenceCostPerDay(
     );
   }
   assertPositiveFinite(expectedDays, 'expectedDays');
-  return Math.abs(divergenceLossAtEdge) / expectedDays;
+  return ensureFinite(
+    Math.abs(divergenceLossAtEdge) / expectedDays,
+    'amortisedDivergenceCostPerDay',
+  );
 }
