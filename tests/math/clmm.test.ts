@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  EmptyDepositError,
   InvalidRangeError,
   PriceOutOfRangeError,
   amountsAtPrice,
@@ -209,5 +210,45 @@ describe('divergenceLossToEdgeFromCentre', () => {
 describe('valueInQuote', () => {
   it('prices the base leg at the given price', () => {
     expect(valueInQuote({ base: 2, quote: 5 }, 10)).toBe(25);
+  });
+
+  it('rejects negative or non-finite balances (review #1, P1)', () => {
+    expect(() => valueInQuote({ base: -1, quote: 0 }, 100)).toThrow(RangeError);
+    expect(() => valueInQuote({ base: 0, quote: -1 }, 100)).toThrow(RangeError);
+    expect(() => valueInQuote({ base: Number.NaN, quote: 1 }, 100)).toThrow(RangeError);
+    expect(() => valueInQuote({ base: 1, quote: Number.POSITIVE_INFINITY }, 100)).toThrow(
+      RangeError,
+    );
+  });
+
+  it('accepts a zero balance on either side', () => {
+    expect(valueInQuote({ base: 0, quote: 5 }, 10)).toBe(5);
+    expect(valueInQuote({ base: 2, quote: 0 }, 10)).toBe(20);
+  });
+});
+
+describe('liquidity validation (review #1, P1)', () => {
+  const range: PriceRange = { lower: 1, upper: 4 };
+
+  it('rejects negative liquidity instead of returning negative balances', () => {
+    expect(() => amountsAtPrice({ liquidity: -1, range }, 2)).toThrow(RangeError);
+  });
+
+  it('rejects non-finite liquidity instead of propagating it', () => {
+    expect(() => amountsAtPrice({ liquidity: Number.NaN, range }, 2)).toThrow(RangeError);
+    expect(() => amountsAtPrice({ liquidity: Number.POSITIVE_INFINITY, range }, 2)).toThrow(
+      RangeError,
+    );
+  });
+
+  it('accepts zero liquidity (a closed or empty position)', () => {
+    const { base, quote } = amountsAtPrice({ liquidity: 0, range }, 2);
+    expect(base).toBe(0);
+    expect(quote).toBe(0);
+  });
+
+  it('refuses to compute divergence against an empty deposit', () => {
+    const position: Position = { liquidity: 0, range };
+    expect(() => divergenceLoss(position, { base: 0, quote: 0 }, 2)).toThrow(EmptyDepositError);
   });
 });

@@ -51,6 +51,14 @@ describe('logReturns', () => {
     expect(() => logReturns([1, 0])).toThrow(RangeError);
     expect(() => logReturns([1, -2])).toThrow(RangeError);
   });
+
+  it('stays finite for extreme but finite magnitudes (review #1, P1)', () => {
+    // log(1e300 / 1e-300) overflows the quotient to Infinity; log(a) - log(b) does not.
+    const [r] = logReturns([1e-300, 1e300]);
+    expect(r).toBeDefined();
+    expect(Number.isFinite(r)).toBe(true);
+    expect(r).toBeCloseTo(600 * Math.LN10, 6);
+  });
 });
 
 describe('mean and standardDeviation', () => {
@@ -68,6 +76,13 @@ describe('mean and standardDeviation', () => {
   it('is zero for a constant series under either estimator', () => {
     expect(standardDeviation([3, 3, 3], 'population')).toBe(0);
     expect(standardDeviation([3, 3, 3], 'sample')).toBe(0);
+  });
+
+  it('rejects non-finite elements instead of returning NaN (review #1, P1)', () => {
+    expect(() => mean([1, Number.NaN])).toThrow(RangeError);
+    expect(() => mean([1, Number.POSITIVE_INFINITY])).toThrow(RangeError);
+    expect(() => standardDeviation([1, Number.NaN], 'population')).toThrow(RangeError);
+    expect(() => standardDeviation([1, Number.POSITIVE_INFINITY], 'sample')).toThrow(RangeError);
   });
 
   it('rejects empty input, and a single point for the sample estimator', () => {
