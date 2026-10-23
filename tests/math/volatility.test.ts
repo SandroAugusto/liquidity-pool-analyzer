@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
+import { NumericOverflowError } from '../../src/math/errors.js';
 import {
   InsufficientDataError,
-  NumericOverflowError,
   amortisedDivergenceCostPerDay,
   dailyVolatility,
   expectedDaysToExit,
