@@ -52,15 +52,22 @@ export function mean(values: readonly number[]): number {
 }
 
 /**
- * Standard deviation. Defaults to the **population** estimator (divide by n),
- * matching the convention used when the model was first validated. Pass
- * `{ sample: true }` for the unbiased (n − 1) estimator.
+ * Which standard-deviation estimator to use.
+ *
+ * - `'sample'`: divide by n − 1. Unbiased for the variance of the process the
+ *   data was drawn from. Use when the series is a sample of an ongoing process —
+ *   which is always the case for market returns.
+ * - `'population'`: divide by n. Describes exactly the data at hand.
+ *
+ * There is no default on purpose: libraries disagree (NumPy defaults to
+ * population, pandas and R to sample) and a silent default is exactly the kind of
+ * plausible-wrong-number this project exists to avoid.
  */
-export function standardDeviation(
-  values: readonly number[],
-  options: { readonly sample?: boolean } = {},
-): number {
-  const minimum = options.sample === true ? 2 : 1;
+export type StdDevEstimator = 'sample' | 'population';
+
+/** Standard deviation with an explicit estimator. See {@link StdDevEstimator}. */
+export function standardDeviation(values: readonly number[], estimator: StdDevEstimator): number {
+  const minimum = estimator === 'sample' ? 2 : 1;
   if (values.length < minimum) {
     throw new InsufficientDataError(minimum, values.length);
   }
@@ -69,13 +76,16 @@ export function standardDeviation(
   for (const v of values) {
     sumSq += (v - mu) ** 2;
   }
-  const divisor = options.sample === true ? values.length - 1 : values.length;
+  const divisor = estimator === 'sample' ? values.length - 1 : values.length;
   return Math.sqrt(sumSq / divisor);
 }
 
-/** Daily volatility (σ) of a price series sampled once per day. */
+/**
+ * Daily volatility (σ) of a price series sampled once per day, using the
+ * **sample** estimator: the series is a draw from an ongoing process.
+ */
 export function dailyVolatility(dailyPrices: readonly number[]): number {
-  return standardDeviation(logReturns(dailyPrices));
+  return standardDeviation(logReturns(dailyPrices), 'sample');
 }
 
 /**
