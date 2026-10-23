@@ -42,3 +42,19 @@ created:
 - **Known weaknesses:** the re-centre threshold is a heuristic; σ over 30 days reacts
   slowly; `E[T]` ignores drift; nothing yet uses pool volume as a leading indicator.
 
+### Review of PR #1 — what it found
+
+Five findings, four of them the **same defect class**: validation was applied to
+`range` and `price` but not to `liquidity`, `TokenAmounts` or the elements of a
+series. `amountsAtPrice({ liquidity: -1, … })` returned negative balances;
+`mean([1, NaN])` returned `NaN`; `logReturns([1e-300, 1e300])` overflowed to
+`Infinity`.
+
+Selective validation is worse than none. It reads as a protected boundary, so callers
+stop checking, and the hole is exactly where no one is looking. The fix was mechanical;
+the lesson is procedural: **when a module validates anything, enumerate every input of
+every public function and decide each one explicitly.** Issue #3 will move this to
+constructors so the enumeration happens once.
+
+The fifth finding (CI did not run `pnpm build`) is the same pattern at the pipeline
+level — a check that existed locally but not in the place that matters.
