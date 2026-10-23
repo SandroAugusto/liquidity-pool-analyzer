@@ -12,6 +12,23 @@ every change is reviewable, reversible and explained.
    that touch no source code.
 5. Squash-merge. The squash message follows Conventional Commits.
 
+## Review layers
+
+Review happens in three layers, cheapest first. A PR does not advance to the next
+layer until the previous one is clean.
+
+1. **CI** — typecheck, lint, formatting, tests with coverage thresholds. Mechanical
+   defects stop here.
+2. **Independent review** — a reviewer (human or agent) that did **not** write the
+   code, working from the diff, `CONTRIBUTING.md` and `AGENTS.md` only. Its job is
+   correctness, conventions and missing tests, in that order. See `AGENTS.md` for the
+   priorities a reviewing agent must follow.
+3. **Owner review** — final judgement and merge. For PRs that touch `src/math`, the
+   rule engine, or anything that could move money, the owner reviews **before** reading
+   the independent review, to avoid anchoring. For infra and docs the order is free.
+
+The author of a PR never acts as its independent reviewer.
+
 ## Commits
 
 [Conventional Commits](https://www.conventionalcommits.org/):
