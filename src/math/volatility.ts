@@ -4,15 +4,10 @@
  * The model is a driftless random walk in log-price with constant daily
  * volatility σ. Both assumptions are known to be violated in practice (ratios
  * trend; volatility clusters) and the estimates here are **planning numbers**,
- * not forecasts. See docs/adr/0002-continuous-model.md.
+ * not forecasts. See docs/adr/0002-continuous-float-model.md.
  */
 
-export class NumericOverflowError extends RangeError {
-  constructor(operation: string) {
-    super(`${operation} overflowed to a non-finite value`);
-    this.name = 'NumericOverflowError';
-  }
-}
+import { NumericOverflowError } from './errors.js';
 
 export class InsufficientDataError extends Error {
   constructor(required: number, received: number) {
