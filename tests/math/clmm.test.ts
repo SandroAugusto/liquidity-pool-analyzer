@@ -19,6 +19,7 @@ import {
   tokenAmounts,
   valueInQuote,
 } from '../../src/math/clmm.js';
+import { NumericOverflowError } from '../../src/math/errors.js';
 import { InvalidPriceError, quotePerBase } from '../../src/math/price.js';
 
 /**
@@ -127,6 +128,11 @@ describe('geometricCentre', () => {
   it('is the square root of the product of the bounds', () => {
     expect(geometricCentre(createRange(quotePerBase(4), quotePerBase(9)))).toBe(6);
   });
+
+  it('does not overflow for a valid range with huge bounds (review #6, P2)', () => {
+    const range = createRange(quotePerBase(1e200), quotePerBase(4e200));
+    expect(geometricCentre(range)).toBeCloseTo(2e200, -195);
+  });
 });
 
 describe('distanceToBounds', () => {
@@ -183,6 +189,22 @@ describe('liquidity recovery and amounts at price', () => {
     expect(() => liquidityFromBase(1, NARROW.range.upper, NARROW.range)).toThrow(
       PriceOutOfRangeError,
     );
+  });
+
+  it('refuses to return non-finite liquidity from valid inputs (review #6, P2)', () => {
+    const range = createRange(quotePerBase(1), quotePerBase(9));
+    // A huge deposit with the price a hair inside a bound makes the
+    // denominator tiny and the quotient overflow.
+    expect(() => liquidityFromQuote(1e308, quotePerBase(1.0001), range)).toThrow(
+      NumericOverflowError,
+    );
+    expect(() => liquidityFromBase(1e308, quotePerBase(8.9999), range)).toThrow(
+      NumericOverflowError,
+    );
+    // The reviewer's example overflows only for the base leg (denominator 1/2 − 1/3);
+    // for the quote leg the denominator is exactly 1 and the result is finite.
+    expect(liquidityFromQuote(1e308, quotePerBase(4), range)).toBe(1e308);
+    expect(() => liquidityFromBase(1e308, quotePerBase(4), range)).toThrow(NumericOverflowError);
   });
 
   it('rejects non-positive deposits', () => {
