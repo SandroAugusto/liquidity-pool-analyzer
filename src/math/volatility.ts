@@ -7,6 +7,13 @@
  * not forecasts. See docs/adr/0002-continuous-model.md.
  */
 
+export class NumericOverflowError extends RangeError {
+  constructor(operation: string) {
+    super(`${operation} overflowed to a non-finite value`);
+    this.name = 'NumericOverflowError';
+  }
+}
+
 export class InsufficientDataError extends Error {
   constructor(required: number, received: number) {
     super(`Need at least ${String(required)} data points, received ${String(received)}`);
@@ -58,11 +65,17 @@ export function mean(values: readonly number[]): number {
     throw new InsufficientDataError(1, 0);
   }
   assertAllFinite(values, 'values');
-  let sum = 0;
-  for (const v of values) {
-    sum += v;
+  // Incremental (Welford-style) mean: never forms the running sum, so it cannot
+  // overflow for finite inputs where a naive sum would.
+  let mu = 0;
+  for (let i = 0; i < values.length; i += 1) {
+    const v = values[i];
+    if (v === undefined) {
+      throw new InsufficientDataError(1, 0); // unreachable; satisfies noUncheckedIndexedAccess
+    }
+    mu += (v - mu) / (i + 1);
   }
-  return sum / values.length;
+  return mu;
 }
 
 /**
@@ -91,7 +104,13 @@ export function standardDeviation(values: readonly number[], estimator: StdDevEs
     sumSq += (v - mu) ** 2;
   }
   const divisor = estimator === 'sample' ? values.length - 1 : values.length;
-  return Math.sqrt(sumSq / divisor);
+  const sd = Math.sqrt(sumSq / divisor);
+  // Squared deviations can still overflow for inputs near Number.MAX_VALUE;
+  // refuse to return a non-finite statistic rather than let it propagate.
+  if (!Number.isFinite(sd)) {
+    throw new NumericOverflowError('standardDeviation');
+  }
+  return sd;
 }
 
 /**

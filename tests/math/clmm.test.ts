@@ -47,6 +47,11 @@ describe('rangeAround', () => {
     expect(geometricCentre(range)).toBeCloseTo(1000, 6);
   });
 
+  it('never returns a range that fails validation, even at numerical extremes (review #1, P2)', () => {
+    expect(() => rangeAround(1e308, 10)).toThrow(InvalidRangeError);
+    expect(() => rangeAround(Number.MIN_VALUE, 1)).toThrow(InvalidRangeError);
+  });
+
   it('rejects non-positive inputs', () => {
     expect(() => rangeAround(0, 0.05)).toThrow(RangeError);
     expect(() => rangeAround(100, 0)).toThrow(RangeError);
