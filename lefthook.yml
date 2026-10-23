@@ -1,0 +1,25 @@
+# Git hooks. Installed by `pnpm install` via the "prepare" script.
+# Skip once with `LEFTHOOK=0 git commit …` — and expect CI to catch what you skipped.
+
+pre-commit:
+  parallel: true
+  commands:
+    format:
+      glob: '*.{ts,js,json,md,yml,yaml}'
+      run: pnpm exec prettier --check {staged_files}
+    lint:
+      glob: '*.{ts,js}'
+      run: pnpm exec eslint {staged_files}
+    typecheck:
+      glob: '*.ts'
+      run: pnpm typecheck
+
+commit-msg:
+  commands:
+    conventional:
+      run: pnpm exec commitlint --edit {1}
+
+pre-push:
+  commands:
+    test:
+      run: pnpm test

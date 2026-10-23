@@ -7,7 +7,10 @@ every change is reviewable, reversible and explained.
 
 1. Branch from `main`: `feat/…`, `fix/…`, `docs/…`, `chore/…`.
 2. Keep PRs small and single-purpose. If a PR needs the word "and" in its title, split it.
-3. `pnpm check` must pass locally before opening the PR. CI runs the same command.
+3. Git hooks (lefthook) run formatting, lint and typecheck on every commit, validate the
+   commit message, and run tests on push. They are installed by `pnpm install`. Bypass
+   with `LEFTHOOK=0` only for work-in-progress commits on a branch you will squash; CI
+   runs the full `pnpm check` regardless.
 4. Every PR gets a review. Self-merging is allowed only for `docs/` and `chore/` changes
    that touch no source code.
 5. Squash-merge. The squash message follows Conventional Commits.
