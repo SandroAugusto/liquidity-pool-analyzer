@@ -20,8 +20,13 @@ attention for that failure mode.
   at presentation boundaries. Flag any arithmetic that mixes the two.
 - **Units in names and docs:** `days`, `perDay`, `inQuote`, `halfWidth`. A bare
   `rate` or `amount` without a unit is a defect.
-- **Validation at boundaries:** public functions validate inputs and throw typed
-  errors. Silent clamping or `NaN` propagation is a defect.
+- **Validation at construction boundaries:** prices, ranges, positions and token
+  amounts are built through constructors (`quotePerBase`, `createRange`,
+  `createPosition`, `tokenAmounts`) that validate once and return branded types.
+  Calculation functions trust those types and only check relationships between
+  inputs. A raw `number` where a price is expected, or an object literal where a
+  validated type is expected, must be a compile error. Silent clamping or `NaN`
+  propagation is a defect.
 - **Continuous model only:** `src/math` must never be used to compute transaction
   amounts (ADR-0002). Flag any code path that could feed it into a signer.
 - **No secrets:** no private keys, RPC URLs with tokens, or wallet addresses in the

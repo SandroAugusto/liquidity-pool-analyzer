@@ -44,7 +44,10 @@ All changes go through pull requests; `main` is protected. See
 
 ## Conventions
 
-- Prices are **quote per base** (e.g. SOL per WBTC in a WBTC/SOL pool).
+- Prices are **quote per base** (e.g. SOL per WBTC in a WBTC/SOL pool) and carry the
+  branded type `QuotePerBase`; obtain one with `quotePerBase(value)`. Ranges, positions
+  and token amounts are built through `createRange`, `createPosition` and
+  `tokenAmounts`, which validate once. Calculation functions trust the types.
 - Fractions are plain numbers (`0.05` means 5 %), never percentages.
 - The math is the continuous CLMM model; tick quantisation is ignored on purpose
   ([ADR-0002](./docs/adr/0002-continuous-float-model.md)).
