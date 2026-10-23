@@ -30,7 +30,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['eslint.config.js', 'vitest.config.ts'],
+    files: ['eslint.config.js', 'vitest.config.ts', 'commitlint.config.js'],
     ...tseslint.configs.disableTypeChecked,
   },
   prettier,

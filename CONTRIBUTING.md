@@ -7,7 +7,12 @@ every change is reviewable, reversible and explained.
 
 1. Branch from `main`: `feat/…`, `fix/…`, `docs/…`, `chore/…`.
 2. Keep PRs small and single-purpose. If a PR needs the word "and" in its title, split it.
-3. `pnpm check` must pass locally before opening the PR. CI runs the same command.
+3. Git hooks (lefthook) run formatting, lint and typecheck on every commit, validate the
+   commit message, and run tests on push. They are installed by `pnpm install`. Bypass
+   with `LEFTHOOK=0` only for work-in-progress commits on a branch you will squash; CI
+   runs the full `pnpm check` regardless. The hooks check the working tree, not the
+   index: with partially staged files they can be wrong in either direction. Stage
+   whole files; CI is the backstop.
 4. Every PR gets a review. Self-merging is allowed only for `docs/` and `chore/` changes
    that touch no source code.
 5. Squash-merge. The squash message follows Conventional Commits.
@@ -28,6 +33,12 @@ layer until the previous one is clean.
    the independent review, to avoid anchoring. For infra and docs the order is free.
 
 The author of a PR never acts as its independent reviewer.
+
+**Provenance.** Agents post with the owner's GitHub identity, so the metadata cannot
+tell a human review from an automated one. Every comment or review written by an agent
+ends with a signature line — `— automated review (codex)`, `— automated review (claude)`
+— and human reviews carry none. The history must make clear which judgement was
+whose.
 
 ## Commits
 
