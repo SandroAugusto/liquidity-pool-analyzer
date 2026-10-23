@@ -114,7 +114,11 @@ export function rangeAround(centre: number, halfWidth: number): PriceRange {
   if (!Number.isFinite(halfWidth) || halfWidth <= 0) {
     throw new RangeError(`halfWidth must be a positive finite number, got ${String(halfWidth)}`);
   }
-  return { lower: centre / (1 + halfWidth), upper: centre * (1 + halfWidth) };
+  const range: PriceRange = { lower: centre / (1 + halfWidth), upper: centre * (1 + halfWidth) };
+  // Finite inputs can still overflow the upper bound (or underflow the lower one
+  // to 0) at numerical extremes; never hand back a range that fails validation.
+  assertValidRange(range);
+  return range;
 }
 
 /** Geometric centre of a range, √(lower · upper). */

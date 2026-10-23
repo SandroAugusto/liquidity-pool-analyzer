@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   InsufficientDataError,
+  NumericOverflowError,
   amortisedDivergenceCostPerDay,
   dailyVolatility,
   expectedDaysToExit,
@@ -83,6 +84,19 @@ describe('mean and standardDeviation', () => {
     expect(() => mean([1, Number.POSITIVE_INFINITY])).toThrow(RangeError);
     expect(() => standardDeviation([1, Number.NaN], 'population')).toThrow(RangeError);
     expect(() => standardDeviation([1, Number.POSITIVE_INFINITY], 'sample')).toThrow(RangeError);
+  });
+
+  it('does not overflow the mean for large finite inputs (review #1, P2)', () => {
+    expect(mean([1e308, 1e308])).toBe(1e308);
+    expect(mean([Number.MAX_VALUE, Number.MAX_VALUE, Number.MAX_VALUE])).toBe(Number.MAX_VALUE);
+  });
+
+  it('is exactly zero for a constant series at the top of the double range', () => {
+    expect(standardDeviation([1e308, 1e308], 'population')).toBe(0);
+  });
+
+  it('throws rather than returning a non-finite standard deviation', () => {
+    expect(() => standardDeviation([-1e308, 1e308], 'population')).toThrow(NumericOverflowError);
   });
 
   it('rejects empty input, and a single point for the sample estimator', () => {
