@@ -58,3 +58,27 @@ constructors so the enumeration happens once.
 
 The fifth finding (CI did not run `pnpm build`) is the same pattern at the pipeline
 level — a check that existed locally but not in the place that matters.
+
+## 2026-10-23 (later) — Parse, don't validate (#3)
+
+Review of PR #1 showed the weakness of per-call validation: it is easy to apply to
+some inputs and forget others. The structural fix landed as a refactor:
+
+- `QuotePerBase` is a branded `number`; `quotePerBase(x)` is the only way to get one.
+  Passing `1200` directly where a price is expected is now a **compile error**.
+- `PriceRange`, `Position` and `TokenAmounts` are branded too and can only be built
+  through `createRange`, `createPosition`, `tokenAmounts`. Object literals do not
+  type-check.
+- Calculation functions lost all their `assert*` preambles. They validate only
+  relationships between inputs (price strictly inside the range for liquidity
+  recovery; non-empty deposit for divergence loss).
+
+Every rejection path from the previous tests still exists; it moved from the
+calculation function to the constructor. Three new tests use `@ts-expect-error` to
+pin the type-level guarantees — if the compiler ever stops rejecting raw numbers, the
+unused directive fails the typecheck.
+
+Open question, deliberately deferred: `logReturns`/`dailyVolatility` still take
+`readonly number[]`. Price series come from external sources and the ratio is
+constructed on the fly; branding the series adds ceremony with little protection.
+Revisit when the on-chain adapter produces the series (#5).
