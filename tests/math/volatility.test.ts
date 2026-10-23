@@ -54,30 +54,37 @@ describe('logReturns', () => {
 });
 
 describe('mean and standardDeviation', () => {
-  it('computes the population standard deviation by default', () => {
-    expect(mean([2, 4, 4, 4, 5, 5, 7, 9])).toBe(5);
-    expect(standardDeviation([2, 4, 4, 4, 5, 5, 7, 9])).toBe(2);
+  const sample = [2, 4, 4, 4, 5, 5, 7, 9];
+
+  it('computes the population standard deviation (divide by n)', () => {
+    expect(mean(sample)).toBe(5);
+    expect(standardDeviation(sample, 'population')).toBe(2);
   });
 
-  it('computes the sample standard deviation on request', () => {
-    expect(standardDeviation([2, 4, 4, 4, 5, 5, 7, 9], { sample: true })).toBeCloseTo(2.138, 3);
+  it('computes the sample standard deviation (divide by n − 1)', () => {
+    expect(standardDeviation(sample, 'sample')).toBeCloseTo(2.138, 3);
   });
 
-  it('is zero for a constant series', () => {
-    expect(standardDeviation([3, 3, 3])).toBe(0);
+  it('is zero for a constant series under either estimator', () => {
+    expect(standardDeviation([3, 3, 3], 'population')).toBe(0);
+    expect(standardDeviation([3, 3, 3], 'sample')).toBe(0);
   });
 
   it('rejects empty input, and a single point for the sample estimator', () => {
     expect(() => mean([])).toThrow(InsufficientDataError);
-    expect(() => standardDeviation([])).toThrow(InsufficientDataError);
-    expect(() => standardDeviation([1], { sample: true })).toThrow(InsufficientDataError);
-    expect(standardDeviation([1])).toBe(0);
+    expect(() => standardDeviation([], 'population')).toThrow(InsufficientDataError);
+    expect(() => standardDeviation([1], 'sample')).toThrow(InsufficientDataError);
+    expect(standardDeviation([1], 'population')).toBe(0);
   });
 });
 
 describe('dailyVolatility on the real SOL/WBTC series', () => {
-  it('is ≈1.46 %/day', () => {
-    expect(dailyVolatility(SOL_PER_WBTC) * 100).toBeCloseTo(1.46, 2);
+  it('is ≈1.48 %/day with the sample estimator', () => {
+    // The population figure is 1.46 %. The sample estimator is √(29/28) ≈ 1.8 %
+    // higher, far inside the model's own uncertainty, but the two must not be
+    // mixed silently.
+    expect(dailyVolatility(SOL_PER_WBTC) * 100).toBeCloseTo(1.48, 2);
+    expect(standardDeviation(logReturns(SOL_PER_WBTC), 'population') * 100).toBeCloseTo(1.46, 2);
   });
 
   it('is lower than the volatility of either leg in USD', () => {
