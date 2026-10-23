@@ -82,3 +82,57 @@ Open question, deliberately deferred: `logReturns`/`dailyVolatility` still take
 `readonly number[]`. Price series come from external sources and the ratio is
 constructed on the fly; branding the series adds ceremony with little protection.
 Revisit when the on-chain adapter produces the series (#5).
+
+## 2026-10-23 (evening) — Property-based tests (#7)
+
+Three review rounds had found the same defect class — valid, finite inputs producing
+a non-finite result — one instance at a time. Added fast-check and, for every public
+function in `src/math`, a property over the **full** range the constructors accept
+(denormals to `Number.MAX_VALUE`).
+
+### What the suite found before any code was changed
+
+Seven failures in under a second, in functions no review had reached:
+
+| Function                                    | Defect                                                               |
+| ------------------------------------------- | -------------------------------------------------------------------- |
+| `distanceToBounds`                          | `upper / price − 1` overflows to `Infinity`                          |
+| `valueInQuote`                              | `base · price` overflows                                             |
+| `divergenceLoss`                            | overflow in the ratio when `hold` is a denormal (passes `hold <= 0`) |
+| `expectedDaysToExit`, `halfWidthForHorizon` | overflow / **underflow to 0**                                        |
+| `amortisedDivergenceCostPerDay`             | overflow                                                             |
+| `liquidityFromBase`                         | **underflow to 0** from a positive deposit                           |
+
+Underflow to zero is a new class: a positive deposit yielding liquidity `0` is as
+wrong as `Infinity`, and no earlier review had looked for it. Fixed with two shared
+guards (`ensureFinite`, `ensurePositiveFinite`) in `src/math/errors.ts`.
+
+### Proof the tests have teeth
+
+Reverted three historical fixes one at a time and re-ran the properties:
+
+- `geometricCentre` product overflow (PR #6) — **caught**.
+- `logReturns` quotient overflow (PR #1) — **caught**.
+- `mean` running-sum overflow (PR #1) — **not caught** at first: the series generator
+  stopped at ±1e300. Widened to ±`MAX_VALUE`; then caught — and the widened generator
+  also showed that the _fixed_ incremental mean (`mu += (v − mu)/n`) still overflows
+  when `v` and `mu` have opposite signs near `MAX_VALUE`. Replaced with
+  `mu += v/n − mu/n`, which never forms a quantity larger than its inputs.
+
+### Three wrong expectations of my own, caught by the process
+
+1. I first wrote `divergenceLoss(pos, deposit, p) ≤ 0` for an _arbitrary_ deposit. The
+   property only holds for the position's own deposit; with an unrelated deposit the
+   sign is unconstrained. The example-based test had used the right deposit; the
+   property did not.
+2. I asserted sign properties at denormal scale, where a double has one significant
+   bit and `5e-324 × 2.5` rounds to `1.5e-323`. That is not a statement about the
+   formulas. Split the suite into **representation** properties (full range) and
+   **mathematical** properties (realistic magnitudes, ranges ≥ 1 tick).
+3. "Finite or typed error" was too lenient for functions whose result is
+   mathematically guaranteed representable — `geometricCentre`, `mean`, `logReturns`.
+   For those, _throwing_ is the bug, and the harness let it pass. Those three now use
+   `mustBeFinite` (no escape clause); that is what made the revert test bite.
+
+Lesson: a property test is only as strong as its generator and its oracle. The first
+version of this file would have passed with the bugs it was written to catch.

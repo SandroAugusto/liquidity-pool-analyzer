@@ -28,7 +28,7 @@
  * position 100 % base below the range and 100 % quote above it.
  */
 
-import { NumericOverflowError } from './errors.js';
+import { ensureFinite, ensurePositiveFinite } from './errors.js';
 import { quotePerBase } from './price.js';
 import type { QuotePerBase } from './price.js';
 
@@ -177,19 +177,10 @@ export function distanceToBounds(
   price: QuotePerBase,
   range: PriceRange,
 ): { readonly toLower: number; readonly toUpper: number } {
-  return { toLower: range.lower / price - 1, toUpper: range.upper / price - 1 };
-}
-
-/**
- * Liquidity recovered from valid inputs can still overflow (huge deposit, price
- * a hair inside the bound). The result must be acceptable to
- * {@link createPosition}; refuse to return one that is not.
- */
-function finiteLiquidity(liquidity: number, operation: string): number {
-  if (!Number.isFinite(liquidity)) {
-    throw new NumericOverflowError(operation);
-  }
-  return liquidity;
+  return {
+    toLower: ensureFinite(range.lower / price - 1, 'distanceToBounds'),
+    toUpper: ensureFinite(range.upper / price - 1, 'distanceToBounds'),
+  };
 }
 
 function assertStrictlyInside(price: QuotePerBase, range: PriceRange): void {
@@ -212,7 +203,7 @@ export function liquidityFromQuote(
   if (!Number.isFinite(quoteAmount) || quoteAmount <= 0) {
     throw new InvalidAmountError('quote', quoteAmount);
   }
-  return finiteLiquidity(
+  return ensurePositiveFinite(
     quoteAmount / (Math.sqrt(price) - Math.sqrt(range.lower)),
     'liquidityFromQuote',
   );
@@ -231,7 +222,7 @@ export function liquidityFromBase(
   if (!Number.isFinite(baseAmount) || baseAmount <= 0) {
     throw new InvalidAmountError('base', baseAmount);
   }
-  return finiteLiquidity(
+  return ensurePositiveFinite(
     baseAmount / (1 / Math.sqrt(price) - 1 / Math.sqrt(range.upper)),
     'liquidityFromBase',
   );
@@ -256,7 +247,7 @@ export function amountsAtPrice(position: Position, price: QuotePerBase): TokenAm
 
 /** Value of a token bundle expressed in the quote token at `price`. */
 export function valueInQuote(amounts: TokenAmounts, price: QuotePerBase): number {
-  return amounts.quote + amounts.base * price;
+  return ensureFinite(amounts.quote + amounts.base * price, 'valueInQuote');
 }
 
 /**
@@ -280,7 +271,8 @@ export function divergenceLoss(
   if (hold <= 0) {
     throw new EmptyDepositError();
   }
-  return (pool - hold) / hold;
+  // A denormal hold passes the check above but can still overflow the ratio.
+  return ensureFinite((pool - hold) / hold, 'divergenceLoss');
 }
 
 /**
