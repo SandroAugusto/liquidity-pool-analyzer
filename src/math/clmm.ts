@@ -72,6 +72,32 @@ function assertPositivePrice(price: number): void {
   }
 }
 
+function assertValidLiquidity(liquidity: number): void {
+  if (!Number.isFinite(liquidity) || liquidity < 0) {
+    throw new RangeError(
+      `Liquidity must be a finite non-negative number, got ${String(liquidity)}`,
+    );
+  }
+}
+
+function assertValidPosition(position: Position): void {
+  assertValidRange(position.range);
+  assertValidLiquidity(position.liquidity);
+}
+
+function assertValidAmounts(amounts: TokenAmounts): void {
+  if (!Number.isFinite(amounts.base) || amounts.base < 0) {
+    throw new RangeError(
+      `base amount must be finite and non-negative, got ${String(amounts.base)}`,
+    );
+  }
+  if (!Number.isFinite(amounts.quote) || amounts.quote < 0) {
+    throw new RangeError(
+      `quote amount must be finite and non-negative, got ${String(amounts.quote)}`,
+    );
+  }
+}
+
 function clampToRange(price: number, range: PriceRange): number {
   return Math.min(Math.max(price, range.lower), range.upper);
 }
@@ -148,7 +174,7 @@ export function liquidityFromBase(baseAmount: number, price: number, range: Pric
  * range, so this is valid (and meaningful) for out-of-range prices too.
  */
 export function amountsAtPrice(position: Position, price: number): TokenAmounts {
-  assertValidRange(position.range);
+  assertValidPosition(position);
   assertPositivePrice(price);
   const p = clampToRange(price, position.range);
   const sqrtP = Math.sqrt(p);
@@ -158,10 +184,21 @@ export function amountsAtPrice(position: Position, price: number): TokenAmounts 
   };
 }
 
-/** Value of a token bundle expressed in the quote token at `price`. */
+/**
+ * Value of a token bundle expressed in the quote token at `price`.
+ * Both amounts must be finite and non-negative.
+ */
 export function valueInQuote(amounts: TokenAmounts, price: number): number {
+  assertValidAmounts(amounts);
   assertPositivePrice(price);
   return amounts.quote + amounts.base * price;
+}
+
+export class EmptyDepositError extends RangeError {
+  constructor() {
+    super('Deposit has zero value; divergence loss is undefined');
+    this.name = 'EmptyDepositError';
+  }
 }
 
 /**
@@ -171,10 +208,16 @@ export function valueInQuote(amounts: TokenAmounts, price: number): number {
  * Returns a signed fraction of the hold value: 0 when the price equals the
  * entry price, negative otherwise (the pool is never worth more than the hold
  * before fees). Fees are **not** included; add them separately.
+ *
+ * Throws {@link EmptyDepositError} when the deposit values to zero, since the
+ * ratio is then undefined.
  */
 export function divergenceLoss(position: Position, deposit: TokenAmounts, price: number): number {
   const pool = valueInQuote(amountsAtPrice(position, price), price);
   const hold = valueInQuote(deposit, price);
+  if (hold <= 0) {
+    throw new EmptyDepositError();
+  }
   return (pool - hold) / hold;
 }
 

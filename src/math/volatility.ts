@@ -35,15 +35,29 @@ export function logReturns(prices: readonly number[]): number[] {
     }
     assertPositiveFinite(prev, `prices[${String(i - 1)}]`);
     assertPositiveFinite(curr, `prices[${String(i)}]`);
-    returns.push(Math.log(curr / prev));
+    // log(curr) - log(prev) rather than log(curr / prev): the quotient can
+    // overflow to Infinity for extreme magnitudes even when both inputs are
+    // finite, whereas each log stays within double range.
+    returns.push(Math.log(curr) - Math.log(prev));
   }
   return returns;
 }
 
+function assertAllFinite(values: readonly number[], name: string): void {
+  for (let i = 0; i < values.length; i += 1) {
+    const v = values[i];
+    if (v === undefined || !Number.isFinite(v)) {
+      throw new RangeError(`${name}[${String(i)}] must be a finite number, got ${String(v)}`);
+    }
+  }
+}
+
+/** Arithmetic mean. All values must be finite. */
 export function mean(values: readonly number[]): number {
   if (values.length === 0) {
     throw new InsufficientDataError(1, 0);
   }
+  assertAllFinite(values, 'values');
   let sum = 0;
   for (const v of values) {
     sum += v;
@@ -71,7 +85,7 @@ export function standardDeviation(values: readonly number[], estimator: StdDevEs
   if (values.length < minimum) {
     throw new InsufficientDataError(minimum, values.length);
   }
-  const mu = mean(values);
+  const mu = mean(values); // also validates finiteness
   let sumSq = 0;
   for (const v of values) {
     sumSq += (v - mu) ** 2;
