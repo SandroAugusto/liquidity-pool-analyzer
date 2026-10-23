@@ -51,6 +51,33 @@ attention for that failure mode.
 - State the failure scenario concretely: _input X → output Y, expected Z_.
 - Do not pad with praise or summaries of what the diff does. The author knows.
 - If you find nothing above priority 5, say so in one line and stop.
+- End every comment and review with a signature line, e.g.
+  `— automated review (codex)`. Agents post with the owner's GitHub identity; the
+  signature is the only way the history shows which judgement was not human.
+
+### Severity is assigned only after reproduction
+
+A finding's severity, and whether it blocks merge, is decided **after** you have
+reproduced the failure, not before. Reasoning about code is how you find a
+candidate; running it is how you confirm one.
+
+- **Reproduce first.** Run the failing input against the code at the PR head (a
+  one-off script, a REPL, or a temporary test) and observe the wrong output. Quote
+  the actual output in the finding.
+- **Unreproduced is not blocking.** If you could not run it, or it did not fail, say
+  so explicitly and mark the finding `unverified`. An unverified finding is never
+  above P3 and never blocks merge.
+- **Severity scale:**
+  - **P1** — reproduced; produces a wrong number, a silent `NaN`/`Infinity`, or
+    accepts invalid input in a reachable path. Blocks merge.
+  - **P2** — reproduced; wrong behaviour at numerical or input extremes outside the
+    realistic domain, or a missing guard that a future change could expose. Should
+    be fixed in the PR or tracked in an issue before merge.
+  - **P3** — maintainability, diagnostics, or test-harness clarity. Never blocks.
+- **The review verdict must match the findings.** Do not summarise a review as
+  "changes required" unless at least one reproduced P1 remains. If you downgrade a
+  finding after posting, edit the original comment and the review summary — do not
+  leave a blocking summary next to a non-blocking correction.
 
 ## When writing code
 
