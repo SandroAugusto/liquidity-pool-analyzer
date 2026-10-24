@@ -165,3 +165,59 @@ lowest floor.
 - Raised global `lines` to 90 → fails with
   `global lines exceeds src/adapters/**: expected 90 to be less than or equal to 80`.
   Reverted.
+
+## 2026-10-24 — Module boundaries in lint (#11)
+
+ADR-0002 ("`src/math` never feeds a signer") and AGENTS.md ("read-only against
+chains") were prose. Now `eslint.config.js` bans signing and transaction-construction
+APIs everywhere, keeps `src/math` importing only from itself, and forces consumers to
+reach adapters through their `index.js`. Core ESLint rules only — no new dependency.
+
+### Wrong expectations
+
+1. **"Lint can enforce ADR-0002."** It cannot: it sees imports, not data flow. What it
+   enforces is weaker — no signer exists for math output to reach while the repo is
+   read-only.
+2. **`no-restricted-imports` covers every way in.** Probed before writing the rules:
+   it catches static imports, `import type`, `import * as` and `export … from`, but
+   not dynamic `import()`, and a method call like `rpc.sendTransaction()` is not an
+   import at all. Added `no-restricted-syntax` (no `import()` in `src`) and
+   `no-restricted-properties` (send/sign methods). Computed access
+   (`rpc[name](…)`) still gets through; recorded in AGENTS.md as a review item.
+3. **Blocks for the same rule add up.** In flat config a later block _replaces_ the
+   options of an earlier one for overlapping files. A `src/math` block with only the
+   purity pattern would have silently dropped the signing ban there. Every block
+   repeats the signing patterns.
+
+### Proof the tests have teeth
+
+`tests/lint-boundaries.test.ts` resolves the effective options from the real config
+per path, so globs and block order are under test. Each mutation was applied, run,
+and reverted:
+
+- typo in the `src/math` glob → 5 failures;
+- signing patterns dropped from every block → 33 failures;
+- deep-import regex loosened to match nothing → 4 failures;
+- `src/math` block moved before the consumer block → 5 failures;
+- signing patterns dropped from the consumer block only (the override trap) → 11
+  failures.
+
+### Review of #13 — a regex on the specifier is not a boundary
+
+The independent review (codex) found that the `src/math` rule checked the _shape_ of
+the specifier (`^(?!\./)`), not where it lands. Reproduced: in `src/math/example.ts`,
+`./../adapters/orca/index.js` resolves to `src/adapters/orca/index.js` and was
+**allowed**; in `src/math/nested/example.ts`, `../price.js` resolves to
+`src/math/price.js` and was **rejected**.
+
+Both destination rules (math stays inside, adapters via index) are now small local
+ESLint rules that resolve the specifier against the importing file. Fixing it exposed
+a wrong expectation in my own test: it asserted that `./adapters/orca/decode.js` from
+`src/cli/example.ts` must be rejected — but that resolves to `src/cli/adapters/…`,
+which is not an adapter. The old regex rejected it by accident, and the test pinned
+the accident. Lesson: a test written against a text-matching rule inherits the rule's
+model of the world; the cases have to be stated in terms of the property (where the
+import lands), not the mechanism.
+
+Mutations re-run after the fix, each reverted: math rule back to a prefix check → 4
+failures; typo in the math glob → 9; adapter rule disabled → 6; signing ban dropped → 33.

@@ -29,6 +29,13 @@ attention for that failure mode.
   propagation is a defect.
 - **Continuous model only:** `src/math` must never be used to compute transaction
   amounts (ADR-0002). Flag any code path that could feed it into a signer.
+  Lint enforces the import side (`eslint.config.js`, proven by
+  `tests/lint-boundaries.test.ts`): `src/math` imports only from itself; signing and
+  transaction-construction APIs are banned everywhere; code outside `src/adapters/`
+  imports an adapter only through its `index.js`. Lint does **not** see data flow,
+  what an adapter's `index.ts` chooses to export, or computed access such as
+  `rpc[name](…)` — those remain review items. Never weaken these rules to make a
+  change pass; a legitimate need is an ADR.
 - **No secrets:** no private keys, RPC URLs with tokens, or wallet addresses in the
   repository. Addresses belong in local config or env.
 
