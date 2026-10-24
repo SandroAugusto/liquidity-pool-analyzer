@@ -136,3 +136,32 @@ Reverted three historical fixes one at a time and re-ran the properties:
 
 Lesson: a property test is only as strong as its generator and its oracle. The first
 version of this file would have passed with the bugs it was written to catch.
+
+## 2026-10-24 — Coverage policy (#4, ADR-0003)
+
+Replaced the single global threshold with per-directory floors: `src/math` 95,
+`src/adapters` 80/75 (active before any adapter exists), global as a backstop at the
+lowest floor.
+
+### Wrong expectations
+
+1. **"Adapters can only reach ~60 %."** Written in #4 when adapter tests meant
+   mocking the SDK. The design later adopted in #5 (injected RPC port, committed
+   fixtures of RPC responses) makes almost all adapter code testable offline, and
+   those tests count towards coverage. 60 would have left room for untested decoding
+   and unit conversion — exactly where a plausible wrong number would come from.
+2. **Per-directory globs are independent of the global threshold.** They are not:
+   checked in the installed Vitest (3.2.7), the global figure includes glob-matched
+   files. A global 90 would have overridden an adapter floor of 80. Recorded in the
+   ADR and asserted by `tests/coverage-policy.test.ts`.
+3. **A threshold on a glob is a check.** A glob that matches nothing passes
+   vacuously — a typo, or a new directory with no glob, is never checked. The policy
+   test fails when a directory under `src/` has no glob of its own.
+
+### Proof the policy test has teeth
+
+- Created `src/positions/x.ts` with no glob → fails with
+  `src/positions/** has no coverage threshold`. Removed.
+- Raised global `lines` to 90 → fails with
+  `global lines exceeds src/adapters/**: expected 90 to be less than or equal to 80`.
+  Reverted.
