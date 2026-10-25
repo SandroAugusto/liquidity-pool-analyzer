@@ -221,3 +221,18 @@ import lands), not the mechanism.
 
 Mutations re-run after the fix, each reverted: math rule back to a prefix check → 4
 failures; typo in the math glob → 9; adapter rule disabled → 6; signing ban dropped → 33.
+
+## 2026-10-24 — Owner position data removed, history rewritten
+
+The repository had recorded the owner's real positions: ranges, entries, deposits,
+readings and results, in the journal, in test fixtures and in one commit message. A
+range plus a date is enough to find a position on chain. All of it was removed, and
+the history was rewritten before the repository was moved:
+
+- tests use synthetic positions with expectations computed independently in Python;
+- earlier commits had their fixtures replaced by synthetic ones with independently
+  computed expectations;
+- the rule is now in AGENTS.md ("No owner position data") and CONTRIBUTING.md.
+
+Lesson: privacy is a property of the whole repository, including history, PR text and
+fixtures, not of the current tree. It is cheapest to state as a rule on day one.
