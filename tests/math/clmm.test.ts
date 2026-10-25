@@ -24,8 +24,9 @@ import { InvalidPriceError, quotePerBase } from '../../src/math/price.js';
 
 /**
  * Synthetic positions on an abstract pair, with round numbers chosen for the
- * tests. They do not describe any real position. Expected values were computed
- * independently in Python from the closed-form formulas.
+ * tests. They do not describe any real position (AGENTS.md, "No private
+ * position data"). Expected values were computed independently in Python
+ * from the closed-form formulas, not by running this implementation.
  *
  *   - narrow: range [90, 100], opened at 97 with 1000 quote
  *   - at 95: 718.07608 quote + 7.17584833 base
@@ -34,7 +35,8 @@ const NARROW = {
   range: createRange(quotePerBase(90), quotePerBase(100)),
   entryPrice: quotePerBase(97),
   entryQuote: 1000,
-  observed: { price: quotePerBase(95), quote: 718.0761, base: 7.1758 },
+  impliedBase: 4.23898148,
+  observed: { price: quotePerBase(95), quote: 718.07608, base: 7.17584833 },
 } as const;
 
 /** Synthetic wide position, opened at the geometric centre of [85, 105]. */
@@ -42,7 +44,7 @@ const WIDE = {
   range: createRange(quotePerBase(85), quotePerBase(105)),
   entryPrice: quotePerBase(94.4722),
   entryQuote: 1000,
-  entryBase: 10.5852,
+  entryBase: 10.585162,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -105,7 +107,7 @@ describe('rangeAround', () => {
   it('builds a multiplicatively symmetric range', () => {
     const range = rangeAround(quotePerBase(1000), 0.05);
     expect(range.lower).toBeCloseTo(952.38, 2);
-    expect(range.upper).toBeCloseTo(1050, 2);
+    expect(range.upper).toBeCloseTo(1050, 9);
     expect(geometricCentre(range)).toBeCloseTo(1000, 6);
   });
 
@@ -137,9 +139,10 @@ describe('geometricCentre', () => {
 
 describe('distanceToBounds', () => {
   it('gives the relative distance from the price to each bound', () => {
+    // Same convention as the Orca UI: negative to the lower bound.
     const d = distanceToBounds(quotePerBase(96), NARROW.range);
-    expect(d.toLower * 100).toBeCloseTo(-6.25, 1);
-    expect(d.toUpper * 100).toBeCloseTo(4.17, 1);
+    expect(d.toLower * 100).toBeCloseTo(-6.25, 4);
+    expect(d.toUpper * 100).toBeCloseTo(4.1667, 4);
   });
 });
 
@@ -149,15 +152,14 @@ describe('liquidity recovery and amounts at price', () => {
 
   it('implies the base deposit from the quote deposit', () => {
     const { base } = amountsAtPrice(position, NARROW.entryPrice);
-    expect(base).toBeCloseTo(4.239, 2);
     // Full precision matters: a UI rounded to 4 dp is not a valid hold baseline.
-    expect(base).toBeCloseTo(4.238981, 6);
+    expect(base).toBeCloseTo(NARROW.impliedBase, 8);
   });
 
   it('gives the holdings at another in-range price', () => {
     const { quote, base } = amountsAtPrice(position, NARROW.observed.price);
-    expect(quote).toBeCloseTo(NARROW.observed.quote, 3);
-    expect(base).toBeCloseTo(NARROW.observed.base, 4);
+    expect(quote).toBeCloseTo(NARROW.observed.quote, 4);
+    expect(base).toBeCloseTo(NARROW.observed.base, 8);
   });
 
   it('recovers the same liquidity from either token', () => {
@@ -178,7 +180,7 @@ describe('liquidity recovery and amounts at price', () => {
     for (const price of [NARROW.range.lower, quotePerBase(NARROW.range.lower * 0.5)]) {
       const { base, quote } = amountsAtPrice(position, price);
       expect(quote).toBeCloseTo(0, 12);
-      expect(base).toBeGreaterThan(4.239);
+      expect(base).toBeGreaterThan(NARROW.impliedBase);
     }
   });
 
@@ -221,7 +223,7 @@ describe('a position opened at the geometric centre', () => {
   it('has near-equal value on each side at entry', () => {
     const liquidity = liquidityFromQuote(WIDE.entryQuote, WIDE.entryPrice, WIDE.range);
     const { base, quote } = amountsAtPrice(createPosition(liquidity, WIDE.range), WIDE.entryPrice);
-    expect(base).toBeCloseTo(WIDE.entryBase, 4);
+    expect(base).toBeCloseTo(WIDE.entryBase, 5);
     expect((base * WIDE.entryPrice) / quote).toBeCloseTo(1, 1);
   });
 });
@@ -278,8 +280,8 @@ describe('divergenceLoss', () => {
 });
 
 describe('divergenceLossToEdgeFromCentre', () => {
-  it('is -1.334 % for the narrow range', () => {
-    expect(divergenceLossToEdgeFromCentre(NARROW.range) * 100).toBeCloseTo(-1.334, 3);
+  it('is -1.3340 % for the narrow range', () => {
+    expect(divergenceLossToEdgeFromCentre(NARROW.range) * 100).toBeCloseTo(-1.334, 4);
   });
 
   it('is identical at both bounds by construction', () => {

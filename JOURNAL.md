@@ -221,3 +221,4 @@ import lands), not the mechanism.
 
 Mutations re-run after the fix, each reverted: math rule back to a prefix check → 4
 failures; typo in the math glob → 9; adapter rule disabled → 6; signing ban dropped → 33.
+

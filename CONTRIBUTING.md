@@ -62,9 +62,10 @@ The body explains **why**, not what. The diff already says what.
 
 - Every public function has tests. Coverage thresholds are enforced in
   `vitest.config.ts`; lowering them requires an ADR.
-- Where possible, test against **real observed data** (an on-chain snapshot, a UI
-  reading) and record the provenance in the test file. Synthetic fixtures are fine for
-  edge cases.
+- Where possible, test against **real public data** (pool accounts, price series) and
+  record the provenance in the test file. For positions, use synthetic fixtures with
+  expectations computed independently of the implementation. Private position data is
+  never test data (AGENTS.md, "No private position data").
 - A failing test that turns out to encode a wrong expectation is a finding, not a
   nuisance. Fix the expectation, and write the lesson down in `JOURNAL.md`.
 

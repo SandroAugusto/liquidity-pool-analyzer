@@ -38,6 +38,14 @@ attention for that failure mode.
   change pass; a legitimate need is an ADR.
 - **No secrets:** no private keys, RPC URLs with tokens, or wallet addresses in the
   repository. Addresses belong in local config or env.
+- **No private position data:** nothing in the repository — code, tests, fixtures,
+  docs, commit messages, PR or issue text — may contain data about anyone's
+  positions or results: ranges, entry prices, deposits, balances, fees, readings,
+  P&L, position or NFT addresses, or dates tied to them. A range plus a date is
+  enough to find a position on chain. Tests use synthetic positions with
+  independently computed expectations, or public protocol and market data (pool
+  accounts, price series). Fixtures recorded from a live wallet stay local and are
+  never committed.
 
 ## Review priorities, in order
 
@@ -45,8 +53,10 @@ attention for that failure mode.
    documented model? Are edge cases (price at or beyond a bound, zero liquidity,
    empty series) handled and tested?
 2. **Convention violations** listed above.
-3. **Missing or weak tests.** Prefer tests pinned to real observed data with provenance
-   noted. A test that only re-states the implementation is not a test.
+3. **Missing or weak tests.** Prefer expectations computed independently of the
+   implementation, with provenance noted, and real _market or protocol_ data where it
+   applies — never private position data (see above). A test that only re-states the
+   implementation is not a test.
 4. **Decisions without an ADR** when they would be hard to reverse (new dependency,
    persistence format, external API, change to coverage thresholds).
 5. **Readability**, only after the above. Do not comment on naming or style unless it

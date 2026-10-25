@@ -146,7 +146,7 @@ describe('expectedDaysToExit and halfWidthForHorizon', () => {
 
 describe('amortisedDivergenceCostPerDay', () => {
   it('spreads the per-exit loss over the expected cycle: 1.2 % / 8 d = 0.15 %/d', () => {
-    expect(amortisedDivergenceCostPerDay(-0.012, 8) * 100).toBeCloseTo(0.15, 2);
+    expect(amortisedDivergenceCostPerDay(-0.012, 8) * 100).toBeCloseTo(0.15, 3);
   });
 
   it('is sign-agnostic on the loss and positive on output', () => {
