@@ -19,7 +19,11 @@ on-chain state before it is trusted.
 ## Status
 
 Early. The math core (`src/math`) is implemented and tested against independently
-computed expectations and public market data. On-chain readers, persistence, alerts and the rule engine are not yet started.
+computed expectations and public market data. A read-only Orca Whirlpool position
+reader exists (`pnpm positions`,
+[ADR-0004](./docs/adr/0004-orca-sdk-and-adapter-boundary.md)); it is tested offline
+against synthetic chain state.
+Persistence, alerts and the rule engine are not yet started.
 See [`JOURNAL.md`](./JOURNAL.md) for the running log and
 [`docs/adr`](./docs/adr) for design decisions.
 
@@ -37,6 +41,9 @@ Requires Node ≥ 22 and pnpm ≥ 10 (`corepack enable`).
 pnpm install
 pnpm check          # typecheck + lint + format check + tests
 pnpm test:watch
+
+pnpm positions <wallet> [--quote <mint>]   # read-only; RPC from SOLANA_RPC_URL
+pnpm record-fixture <wallet> <name>        # sanitised test fixture, no wallet stored
 ```
 
 All changes go through pull requests; `main` is protected. See

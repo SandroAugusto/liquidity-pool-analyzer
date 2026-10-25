@@ -10,6 +10,8 @@
  * exactly as they would in a real file there.
  */
 
+// eslint-disable-next-line no-restricted-imports -- enumerates the SDK's exports to test the ban itself; nothing is called
+import * as client from '@orca-so/whirlpools-client';
 import { ESLint, Linter } from 'eslint';
 import tseslint from 'typescript-eslint';
 import { describe, expect, it } from 'vitest';
@@ -101,9 +103,17 @@ describe('signing and transaction-construction APIs are banned everywhere', () =
     "import { signTransactionMessageWithSigners } from '@solana/kit';",
     "import { sendAndConfirmTransactionFactory } from '@solana/kit';",
     "import { signTransaction } from '@solana/transactions';",
-    "import { openPositionInstructions } from '@orca-so/whirlpools';",
-    "import { harvestPositionInstructions } from '@orca-so/whirlpools';",
+    "import { appendTransactionMessageInstructions } from '@solana/kit';",
+    "import { setTransactionMessageFeePayerSigner } from '@solana/kit';",
+    "import { createSignerFromKeyPair } from '@solana/kit';",
+    "import { getOpenPositionInstruction } from '@orca-so/whirlpools-client';",
+    "import { getOpenPositionInstructionAsync } from '@orca-so/whirlpools-client';",
+    "import { getIncreaseLiquidityInstructionDataEncoder } from '@orca-so/whirlpools-client';",
+    "import { getTransferInstruction } from '@solana-program/token';",
+    "import { fetchPositionsForOwner } from '@orca-so/whirlpools';",
+    "import type { IncreaseLiquidityQuote } from '@orca-so/whirlpools';",
     "export { swapInstructions } from '@orca-so/whirlpools';",
+    "import { buildAndSendTransaction } from '@orca-so/tx-sender';",
     'rpc.sendTransaction(tx);',
     'const { sendRawTransaction } = connection;',
     'wallet.signTransaction(tx);',
@@ -121,12 +131,60 @@ describe('signing and transaction-construction APIs are banned everywhere', () =
     "import type { VersionedTransactionResponse } from '@solana/web3.js';",
     "import { createSolanaRpc, address } from '@solana/kit';",
     "import type { Signature } from '@solana/keys';",
-    "import { fetchPositionsForOwner } from '@orca-so/whirlpools';",
     "import { decreaseLiquidityQuote, collectFeesQuote } from '@orca-so/whirlpools-core';",
-    "import { getPositionDecoder } from '@orca-so/whirlpools-client';",
+    "import { getPositionDecoder, getWhirlpoolDecoder } from '@orca-so/whirlpools-client';",
+    "import { getPositionAddress, getTickArrayAddress } from '@orca-so/whirlpools-client';",
+    "import { parseIncreaseLiquidityInstruction } from '@orca-so/whirlpools-client';",
+    "import { getIncreaseLiquidityInstructionDataDecoder } from '@orca-so/whirlpools-client';",
+    "import { getBase64Encoder, isSignature } from '@solana/kit';",
     'await rpc.getMultipleAccounts(addresses).send();',
   ])(`allows in ${ADAPTER}: %s`, async (code) => {
     expect(await boundaryErrors(ADAPTER, code)).toEqual([]);
+  });
+});
+
+// The installed SDK is the ground truth: every instruction builder it exports
+// must be banned, every read-side helper allowed. Catches a builder whose name
+// the pattern does not anticipate (an `…Async` variant was the first one).
+describe('against the installed @orca-so/whirlpools-client exports', () => {
+  // Independent of the lint pattern on purpose: anything mentioning
+  // "Instruction" that is not a decoder, a parser or the instruction-kind enum.
+  const builders = Object.keys(client).filter(
+    (name) =>
+      name.includes('Instruction') &&
+      !/^(parse|identify)/.test(name) &&
+      !name.endsWith('Decoder') &&
+      name !== 'WhirlpoolInstruction',
+  );
+  const readSide = Object.keys(client).filter((name) =>
+    /^(parse\w*Instruction|get\w*(Decoder|Address))$/.test(name),
+  );
+
+  it('finds both kinds of export (sanity check on the filters)', () => {
+    expect(builders.length).toBeGreaterThan(50);
+    expect(readSide.length).toBeGreaterThan(50);
+  });
+
+  it('bans every instruction builder', async () => {
+    const allowed: string[] = [];
+    for (const name of builders) {
+      const code = `import { ${name} } from '@orca-so/whirlpools-client';`;
+      if ((await boundaryErrors(ADAPTER, code)).length === 0) {
+        allowed.push(name);
+      }
+    }
+    expect(allowed).toEqual([]);
+  });
+
+  it('allows every decoder, address helper and instruction parser', async () => {
+    const banned: string[] = [];
+    for (const name of readSide) {
+      const code = `import { ${name} } from '@orca-so/whirlpools-client';`;
+      if ((await boundaryErrors(ADAPTER, code)).length > 0) {
+        banned.push(name);
+      }
+    }
+    expect(banned).toEqual([]);
   });
 });
 
