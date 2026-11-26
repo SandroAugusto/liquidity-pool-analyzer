@@ -29,6 +29,7 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - run: node scripts/check-no-fixtures.mjs tree
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm format:check

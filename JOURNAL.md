@@ -222,3 +222,138 @@ import lands), not the mechanism.
 Mutations re-run after the fix, each reverted: math rule back to a prefix check → 4
 failures; typo in the math glob → 9; adapter rule disabled → 6; signing ban dropped → 33.
 
+## 2026-10-24 — Orca position reader (#5, ADR-0004)
+
+`pnpm positions <wallet>` reads every open Whirlpool position from chain into a
+protocol-neutral `PositionReading`. Built and tested offline: the Solana RPC hosts
+are blocked in the environment this was written in, so **nothing here has been run
+against real chain state yet**. Criteria 1 (CLI vs. UI) and 2–3 on live accounts
+wait for `pnpm record-fixture` to be run where RPC is reachable.
+
+### Wrong expectations
+
+1. **"Fetch a position's accounts in one `getMultipleAccounts`, or pin calls with
+   `minContextSlot`"** (my own wording in #5, criterion 7). The first is impossible:
+   each address depends on the previous answer (NFT → position → pool → mints →
+   tick arrays). The second would fail on almost every run, since sequential calls
+   land on different slots. What works: discovery keeps only immutable facts, then
+   one state call per group of positions holds everything mutable.
+2. **"Don't assume WBTC is token A"** was the right warning about the wrong thing.
+   SOL is token A in WBTC/SOL, so the pool-native price is WBTC per SOL, the inverse of what the UI shows;
+   defaulting to "A is base" would have been just as wrong. The quote token is now
+   chosen from an explicit preference list, and an unlisted pair is refused.
+3. **The lint ban list I wrote from memory (#11) had holes and false positives.**
+   Against the installed SDK: `get*InstructionAsync` builders and kit's message
+   builders (`appendTransactionMessageInstructions`, `setTransactionMessageFeePayerSigner`,
+   `createSignerFromKeyPair`) were allowed; `parse*Instruction` (read-side, needed
+   by #10) was banned. A test now enumerates the client's real exports.
+4. **`getTickArrayDecoder()` sounds like the tick-array decoder.** It decodes
+   _fixed_ arrays only; `decodeTickArray` handles fixed and dynamic. The wrong one
+   would turn a dynamic array into plausible wrong fees.
+5. **"Use the current SDK" meant `@orca-so/whirlpools`.** That package depends on a
+   transaction sender and fetches accounts itself. The adapter uses its two
+   building blocks instead (client: decoders; core: pure math).
+6. **Adapter coverage would be ~60 % (#4).** It is ~97 % lines / ~90 % branches:
+   with the port injected, nearly all adapter code runs offline.
+
+### Wrong expectations in my own tests
+
+- The misaligned-response test passed with the alignment guard removed: reversing
+  _every_ response tripped other checks first. It now scrambles only the mint lookup,
+  where an unguarded reader would silently swap SOL and WBTC decimals.
+- The fixture round-trip compared a replay against a _different_ live run, so the
+  slots differed. It now compares against the recorded run.
+- The random-pool property generated positions holding more than u64::MAX of a
+  token; the SDK correctly refuses. Those impossible states are now discarded.
+
+### Proof the tests have teeth
+
+Each mutation applied, run, reverted; failures in `tests/adapters`:
+
+- liquidity scaled without the square root → 2; by one token's decimals only → 2;
+- range not inverted when the base is token B → 3;
+- amounts not swapped when the base is token B → 5;
+- fixed-only tick decoder → 1 (the dynamic-array fee test);
+- alignment guard removed → 1 (the misaligned mint lookup);
+- instruction-builder ban without `Async` (lint) → 4.
+
+### Review of #14 — one premise wrong, one state missed
+
+The independent review (codex) found three defects; all reproduced here with the real
+SDK before fixing.
+
+1. **"A position's tick bounds are immutable"** — mine, in the reader and in
+   ADR-0004. `reset_position_range` and `reposition_liquidity_v2` rewrite them. A
+   change between discovery and the state call made the reader take fee growth from
+   the old ticks while amounts and range used the new ones. The reviewer could only
+   show the mismatched inputs; with the real SDK it is a number: **24 SOL of fees
+   reported, 40 correct**, no error. That is the P1 shape (a plausible wrong number),
+   reached only through a race. Bounds are now a plan, re-checked in the state call;
+   a moved position is re-planned and re-read, and refused after three moves.
+2. **Every open position has tick arrays.** `open_position` does not create them; a
+   never-funded position has none, and one such position aborted the whole wallet
+   read. Zero-liquidity positions are now read from their own fields.
+3. **Discovery is one call.** It is chunked by 100; the fixture sanitiser only
+   filtered the first chunk, leaking later foreign-NFT lookups and breaking replay.
+4. **"Keep the positions the run returned"** (second review round). A position that
+   exists in discovery and closes before the state call is skipped by the reader, but
+   the rest of the trace still holds its requests; dropping it broke replay. The
+   sanitiser now keeps every NFT whose discovery lookup found a Whirlpool position,
+   decided from the recorded accounts rather than from the readings.
+
+Lesson: the synthetic chain only produces the states I thought of. Every position it
+built had tick arrays and fixed bounds, so the tests could not disagree with my
+assumptions. Each fix came with a synthetic-chain capability (moving a range,
+skipping tick arrays, >100 candidates) and a test that failed before the fix — one of
+them, "re-plans into other tick arrays", first passed for the wrong reason (the old
+arrays were still there) until the test deleted them.
+
+### Verification method
+
+To verify the reader outside the test suite, compare it with an independent decoder
+of the raw Position and Whirlpool accounts (written from the IDL, no shared code with
+the SDK) and with the protocol UI, on accounts that are never committed. Fees owed
+come from the tick-array
+fee-growth path rather than the stored `fee_owed` fields, which lag until the next
+liquidity change. Committed tests use synthetic chain state (AGENTS.md, "No private
+position data").
+
+One diagnostics gap: behind an HTTPS proxy the CLI fails with a bare
+`TypeError: fetch failed`, because Node's built-in `fetch` ignores `HTTPS_PROXY`
+unless `NODE_USE_ENV_PROXY=1` is set (Node ≥ 22.21).
+
+## 2026-11-26 — Position fixtures leave the repository
+
+Review of #1 found that `pnpm record-fixture` would write position fixtures to
+`tests/fixtures/orca/`, inside the repository and not ignored by git, so a recorded
+fixture would be one `git add -A` away from being committed. Two doc comments
+also contradicted AGENTS.md, calling position addresses "public on-chain data". A
+position leads to its NFT and to the wallet, so leaving the wallet out of the file
+does not hide it.
+
+### Wrong expectations
+
+1. **"Review the file before committing it" is a control.** It is a reminder, and the
+   rule it stands in for says real fixtures are never committed at all. A rule that
+   depends on someone remembering it fails on the first tired evening.
+2. **Sanitising the wallet out of a fixture makes it safe to share.** It removes one
+   identifier; the position addresses in the same file lead back to it.
+
+### What changed
+
+Four independent lines of defence, each tested:
+
+- the CLI writes to `$LPA_FIXTURE_DIR`, or under `$HOME`, never inside the repository,
+  and refuses to record when neither is known;
+- `.gitignore` covers `tests/fixtures/` and `*.fixture.json`;
+- `scripts/check-no-fixtures.mjs` rejects a staged fixture on commit and one anywhere
+  in the pushed history on push (it catches `git add -f`, and a fixture committed and
+  then deleted);
+- CI runs the same guard on the tree.
+
+### Proof the tests have teeth
+
+Each mutation applied, `tests/fixture-privacy.test.ts` run, reverted:
+
+- `tests/fixtures/` removed from `.gitignore` → 2 failures;
+- the guard's forbidden patterns emptied → 2 failures.
