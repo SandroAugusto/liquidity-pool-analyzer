@@ -55,6 +55,15 @@ import { NumericOverflowError } from '../../src/math/errors.js';
 import { InvalidPriceError, quotePerBase } from '../../src/math/price.js';
 import type { QuotePerBase } from '../../src/math/price.js';
 import {
+  breakevenVolatility,
+  costPerRemount,
+  expectedDaysToExitFrom,
+  feeConstant,
+  feeToCostRatio,
+  logHalfWidth,
+  remountCostPerDay,
+} from '../../src/math/rebalance.js';
+import {
   InsufficientDataError,
   amortisedDivergenceCostPerDay,
   dailyVolatility,
@@ -426,6 +435,122 @@ describe('volatility: finite in ⇒ finite out or typed error', () => {
       fc.property(fc.double({ min: -1, max: 1, noNaN: true }), finitePositive, (loss, days) => {
         const c = finiteOrTyped(() => amortisedDivergenceCostPerDay(loss, days));
         if (c !== undefined) expect(c).toBeGreaterThanOrEqual(0);
+      }),
+      RUNS,
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// rebalance.ts
+// ---------------------------------------------------------------------------
+
+describe('rebalance: finite in ⇒ finite out or typed error', () => {
+  it('logHalfWidth', () => {
+    // Not mustBeFinite: for bounds a few ulps apart, ln(upper) and ln(lower)
+    // round to the same double and the half-width underflows to zero. The
+    // typed NumericOverflowError is the correct outcome there.
+    fc.assert(
+      fc.property(range, (r) => {
+        const h = finiteOrTyped(() => logHalfWidth(r));
+        if (h !== undefined) expect(h).toBeGreaterThan(0);
+      }),
+      RUNS,
+    );
+  });
+
+  it('expectedDaysToExitFrom', () => {
+    fc.assert(
+      fc.property(price, range, finitePositive, (pr, r, sigma) => {
+        const d = finiteOrTyped(() => expectedDaysToExitFrom(pr, r, sigma));
+        if (d !== undefined) expect(d).toBeGreaterThan(0);
+      }),
+      RUNS,
+    );
+  });
+
+  it('costPerRemount / remountCostPerDay / feeToCostRatio', () => {
+    fc.assert(
+      fc.property(
+        range,
+        finitePositive,
+        finiteNonNegative,
+        finiteNonNegative,
+        (r, sigma, swap, fee) => {
+          const inputs = { range: r, sigmaPerDay: sigma, swapCostPerRemount: swap };
+          const c = finiteOrTyped(() => costPerRemount(r, swap));
+          if (c !== undefined) expect(c).toBeGreaterThan(0);
+          const perDay = finiteOrTyped(() => remountCostPerDay(inputs));
+          if (perDay !== undefined) expect(perDay).toBeGreaterThan(0);
+          const ratio = finiteOrTyped(() => feeToCostRatio(fee, inputs));
+          if (ratio !== undefined) expect(ratio).toBeGreaterThanOrEqual(0);
+        },
+      ),
+      RUNS,
+    );
+  });
+
+  it('feeConstant / breakevenVolatility', () => {
+    fc.assert(
+      fc.property(
+        range,
+        finitePositive,
+        finiteNonNegative,
+        finiteNonNegative,
+        (r, sigma, fee, swap) => {
+          const k = finiteOrTyped(() => feeConstant(fee, r, sigma));
+          if (k !== undefined) expect(k).toBeGreaterThanOrEqual(0);
+          const s = finiteOrTyped(() => breakevenVolatility(fee, r, swap));
+          if (s !== undefined) expect(s).toBeGreaterThanOrEqual(0);
+        },
+      ),
+      RUNS,
+    );
+  });
+});
+
+describe('rebalance: mathematical properties (realistic domain)', () => {
+  const sigma = fc.double({ min: 1e-4, max: 0.5, noNaN: true });
+  const swap = fc.double({ min: 0, max: 0.01, noNaN: true });
+  const k = fc.double({ min: 1e-4, max: 0.1, noNaN: true });
+
+  it('time to exit is largest at the geometric centre', () => {
+    fc.assert(
+      fc.property(
+        meaningfulRange,
+        sigma,
+        fc.double({ min: 0.01, max: 0.99, noNaN: true }),
+        (r, s, t) => {
+          const logLo = Math.log(r.lower);
+          const logHi = Math.log(r.upper);
+          const pr = quotePerBase(Math.exp(logLo + t * (logHi - logLo)));
+          const atCentre = expectedDaysToExitFrom(geometricCentre(r), r, s);
+          expect(expectedDaysToExitFrom(pr, r, s)).toBeLessThanOrEqual(atCentre * (1 + 1e-9));
+        },
+      ),
+      RUNS,
+    );
+  });
+
+  it('a costlier swap never raises the breakeven volatility', () => {
+    fc.assert(
+      fc.property(meaningfulRange, k, swap, swap, (r, kk, s1, s2) => {
+        const lo = Math.min(s1, s2);
+        const hi = Math.max(s1, s2);
+        expect(breakevenVolatility(kk, r, hi)).toBeLessThanOrEqual(
+          breakevenVolatility(kk, r, lo) * (1 + 1e-12),
+        );
+      }),
+      RUNS,
+    );
+  });
+
+  it('the fee/cost ratio equals breakeven σ / σ when fees follow the model', () => {
+    fc.assert(
+      fc.property(meaningfulRange, k, sigma, swap, (r, kk, s, sw) => {
+        const fee = (kk * s) / logHalfWidth(r);
+        const ratio = feeToCostRatio(fee, { range: r, sigmaPerDay: s, swapCostPerRemount: sw });
+        expect(ratio).toBeCloseTo(breakevenVolatility(kk, r, sw) / s, 6);
       }),
       RUNS,
     );
