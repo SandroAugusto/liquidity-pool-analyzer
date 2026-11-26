@@ -10,6 +10,8 @@
 pre-commit:
   parallel: true
   commands:
+    no-fixtures:
+      run: node scripts/check-no-fixtures.mjs staged
     format:
       glob: '*.{ts,js,json,md,yml,yaml}'
       run: pnpm exec prettier --check {staged_files}
@@ -27,5 +29,7 @@ commit-msg:
 
 pre-push:
   commands:
+    no-fixtures:
+      run: node scripts/check-no-fixtures.mjs history
     test:
       run: pnpm test

@@ -22,10 +22,10 @@ import tseslint from 'typescript-eslint';
 const READ_ONLY = 'The repository is read-only against chains (AGENTS.md; ADR-0002).';
 
 /**
- * Signing, sending and transaction-construction APIs. Names cover both
- * `@solana/web3.js` and `@solana/kit` (and its `@solana/*` subpackages) plus
- * the Whirlpools SDK's position/pool/swap builders; revisit against the SDK
- * actually installed by #5. Quote functions stay allowed: they are pure reads.
+ * Signing, sending and transaction-construction APIs. Checked against the
+ * exports of the installed `@solana/kit` 5.5 and `@orca-so/whirlpools-client`
+ * 7.0 (#5); `@solana/web3.js` names are kept in case it is ever pulled in.
+ * Read-side APIs stay allowed: decoders, `parse*Instruction` (#10), quotes.
  */
 const signingImportPatterns = [
   {
@@ -33,16 +33,24 @@ const signingImportPatterns = [
     importNamePattern:
       '^(Keypair|Transaction|VersionedTransaction|TransactionMessage|SystemProgram' +
       '|sendAndConfirm.*|send.*Transaction.*|(sign|partiallySign)[A-Z].*|signAndSend.*' +
-      '|.*KeyPairSigner.*|(generate|create)KeyPair.*|createTransactionMessage|compileTransaction)$',
+      '|.*KeyPairSigner.*|(generate|create)KeyPair.*|createSignerFromKeyPair|createNoopSigner' +
+      '|addSignersTo.*|createSignableMessage|airdropFactory|getBase64EncodedWireTransaction' +
+      '|createTransactionMessage|(append|prepend|set)TransactionMessage.*' +
+      '|compileTransaction(Message)?|compileOffchainMessage.*)$',
     message: `Signing / transaction-construction API. ${READ_ONLY}`,
   },
   {
-    group: ['@orca-so/*'],
-    importNamePattern:
-      '^(?!.*Quote)(.*Instructions?|swap.*|openPosition.*|openFullRangePosition.*' +
-      '|increaseLiquidity.*|decreaseLiquidity.*|closePosition.*|harvest.*|create.*Pool.*' +
-      '|send.*|buildTransaction.*)$',
-    message: `Whirlpools transaction builder. ${READ_ONLY}`,
+    // Instruction builders, sync and async, and the encoders of their data.
+    group: ['@orca-so/whirlpools-client', '@solana-program/*'],
+    importNamePattern: '^get[A-Z]\\w*Instruction(Async|Data(Encoder|Codec))?$',
+    message: `Instruction builder. ${READ_ONLY}`,
+  },
+  {
+    // The high-level SDK and its sender exist to build and send transactions;
+    // the adapter uses only whirlpools-client (decoders) and whirlpools-core
+    // (pure math). ADR-0004.
+    group: ['@orca-so/whirlpools', '@orca-so/tx-sender'],
+    message: `Transaction-building package; use @orca-so/whirlpools-client and -core. ${READ_ONLY}`,
   },
 ];
 
@@ -171,13 +179,21 @@ export default tseslint.config(
     rules: { 'local/math-imports-stay-inside': 'error' },
   },
   {
+    // Repository tooling run by Node directly (hooks, CI), not part of the build.
+    files: ['scripts/**/*.mjs'],
+    languageOptions: { globals: { process: 'readonly' } },
+    rules: {
+      '@typescript-eslint/explicit-function-return-type': 'off',
+    },
+  },
+  {
     files: ['tests/**/*.ts'],
     rules: {
       '@typescript-eslint/explicit-function-return-type': 'off',
     },
   },
   {
-    files: ['eslint.config.js', 'vitest.config.ts', 'commitlint.config.js'],
+    files: ['eslint.config.js', 'vitest.config.ts', 'commitlint.config.js', 'scripts/**/*.mjs'],
     ...tseslint.configs.disableTypeChecked,
   },
   prettier,

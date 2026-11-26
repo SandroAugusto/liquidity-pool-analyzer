@@ -26,6 +26,7 @@
     "tests/**/*.ts",
     "vitest.config.ts",
     "eslint.config.js",
-    "commitlint.config.js"
+    "commitlint.config.js",
+    "scripts/**/*.mjs"
   ]
 }

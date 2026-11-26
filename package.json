@@ -21,6 +21,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build",
+    "positions": "pnpm -s build && node dist/cli/positions.js",
+    "record-fixture": "pnpm -s build && node dist/cli/record-fixture.js",
     "prepare": "lefthook install"
   },
   "devDependencies": {
@@ -37,5 +39,10 @@
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.46.0",
     "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "@orca-so/whirlpools-client": "7.0.0",
+    "@orca-so/whirlpools-core": "3.1.0",
+    "@solana/kit": "5.5.1"
   }
 }
