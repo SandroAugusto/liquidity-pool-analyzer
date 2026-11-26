@@ -179,13 +179,21 @@ export default tseslint.config(
     rules: { 'local/math-imports-stay-inside': 'error' },
   },
   {
+    // Repository tooling run by Node directly (hooks, CI), not part of the build.
+    files: ['scripts/**/*.mjs'],
+    languageOptions: { globals: { process: 'readonly' } },
+    rules: {
+      '@typescript-eslint/explicit-function-return-type': 'off',
+    },
+  },
+  {
     files: ['tests/**/*.ts'],
     rules: {
       '@typescript-eslint/explicit-function-return-type': 'off',
     },
   },
   {
-    files: ['eslint.config.js', 'vitest.config.ts', 'commitlint.config.js'],
+    files: ['eslint.config.js', 'vitest.config.ts', 'commitlint.config.js', 'scripts/**/*.mjs'],
     ...tseslint.configs.disableTypeChecked,
   },
   prettier,

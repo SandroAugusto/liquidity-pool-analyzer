@@ -21,7 +21,7 @@ import {
   replayPort,
 } from '../../../src/adapters/orca/index.js';
 import type { Fixture } from '../../../src/adapters/orca/index.js';
-import { main } from '../../../src/cli/record-fixture.js';
+import { DEFAULT_FIXTURE_SUBDIR, fixtureDir, main } from '../../../src/cli/record-fixture.js';
 import { MINT, SyntheticChain, WALLET, fakeAddress } from './synthetic-chain.js';
 
 const SPACING = 16;
@@ -170,13 +170,13 @@ describe('fixtures when a position closes during the read (review of #14)', () =
 });
 
 describe('pnpm record-fixture', () => {
-  it('writes the sanitised fixture under tests/fixtures/orca', async () => {
+  it('writes the sanitised fixture to $LPA_FIXTURE_DIR, outside the repository', async () => {
     const { chain } = await chainWithForeignNft();
     const files: Record<string, string> = {};
     let out = '';
 
     const code = await main([WALLET, 'example'], {
-      env: {},
+      env: { LPA_FIXTURE_DIR: '/tmp/lpa-fixtures', HOME: '/home/someone' },
       createPort: () => chain.port(),
       writeFile: (path, contents) => {
         files[path] = contents;
@@ -187,9 +187,29 @@ describe('pnpm record-fixture', () => {
     });
 
     expect(code).toBe(0);
-    expect(Object.keys(files)).toEqual(['tests/fixtures/orca/example.json']);
-    expect(files['tests/fixtures/orca/example.json']).not.toContain(WALLET);
+    expect(Object.keys(files)).toEqual(['/tmp/lpa-fixtures/example.json']);
+    expect(files['/tmp/lpa-fixtures/example.json']).not.toContain(WALLET);
     expect(out).toMatch(/1 position\(s\) at slot\(s\) \d+/);
+  });
+
+  it('defaults to a directory under $HOME, never a relative path', () => {
+    expect(fixtureDir({ HOME: '/home/someone' })).toBe(`/home/someone/${DEFAULT_FIXTURE_SUBDIR}`);
+    expect(fixtureDir({ LPA_FIXTURE_DIR: '', HOME: '/home/someone' })).toBe(
+      `/home/someone/${DEFAULT_FIXTURE_SUBDIR}`,
+    );
+  });
+
+  it('refuses to record when no directory outside the repository is known', async () => {
+    let err = '';
+    const code = await main([WALLET, 'x'], {
+      env: {},
+      createPort: () => new SyntheticChain().port(),
+      writeFile: () => Promise.reject(new Error('must not write')),
+      out: () => undefined,
+      err: (text) => (err += text),
+    });
+    expect(code).toBe(2);
+    expect(err).toContain('outside the repository');
   });
 
   it.each([[[]], [[WALLET]], [[WALLET, '../escape']], [[WALLET, 'a', 'b']]])(
