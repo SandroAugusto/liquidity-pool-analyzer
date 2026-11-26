@@ -389,3 +389,4 @@ Each mutation applied, `tests/fixture-privacy.test.ts` run, reverted:
 
 - `tests/fixtures/` removed from `.gitignore` → 2 failures;
 - the guard's forbidden patterns emptied → 2 failures.
+

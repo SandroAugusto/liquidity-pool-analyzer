@@ -61,6 +61,38 @@ describe('expectedDaysToExitFrom', () => {
     expect(expectedDaysToExitFrom(p(96), RANGE_A, 0.015)).toBeCloseTo(11.7093, 3);
   });
 
+  it('matches a Monte Carlo of a driftless walk from the centre', () => {
+    // Seeded LCG + Box–Muller, so the test is deterministic. Range ±10 % in log,
+    // σ = 1 %/day, 0.01-day steps: E[T] = 0.1² / 0.01² = 100 days.
+    let seed = 42;
+    const uniform = (): number => {
+      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+      return (seed + 1) / 4294967297;
+    };
+    const normal = (): number =>
+      Math.sqrt(-2 * Math.log(uniform())) * Math.cos(2 * Math.PI * uniform());
+    const range = createRange(p(100 * Math.exp(-0.1)), p(100 * Math.exp(0.1)));
+    const sigma = 0.01;
+    const dt = 0.01;
+    const paths = 2000;
+    let total = 0;
+    for (let i = 0; i < paths; i++) {
+      let x = 0;
+      let t = 0;
+      while (Math.abs(x) < 0.1) {
+        x += sigma * Math.sqrt(dt) * normal();
+        t += dt;
+      }
+      total += t;
+    }
+    const expected = expectedDaysToExitFrom(p(100), range, sigma);
+    expect(expected).toBeCloseTo(100, 9);
+    // Discrete steps overshoot the boundary slightly late; 2000 paths give a
+    // standard error of about 1.5 %.
+    expect(total / paths / expected).toBeGreaterThan(0.95);
+    expect(total / paths / expected).toBeLessThan(1.07);
+  });
+
   it('is symmetric in log-price around the centre', () => {
     const c = geometricCentre(RANGE_B);
     const above = p(c * 1.02);
