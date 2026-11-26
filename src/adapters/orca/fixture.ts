@@ -13,8 +13,11 @@
  *   lookups of their would-be position accounts, so the fixture does not
  *   reveal the wallet's other holdings. The remaining lookups are re-chunked
  *   the way the reader will request them on replay.
- * Position, pool and mint addresses remain: they are public on-chain data
- * (#5, criterion 4, decision A).
+ * Position, pool and mint addresses remain. Pool and mint addresses are
+ * public protocol data; position addresses and accounts are **owner position
+ * data** under AGENTS.md (a position leads to its NFT and to the wallet), so a
+ * fixture of real positions is never committed. The CLI writes it outside the
+ * repository; see `src/cli/record-fixture.ts`.
  */
 
 import { getPositionAddress } from '@orca-so/whirlpools-client';

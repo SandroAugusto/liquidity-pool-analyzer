@@ -336,3 +336,40 @@ position data").
 One diagnostics gap: behind an HTTPS proxy the CLI fails with a bare
 `TypeError: fetch failed`, because Node's built-in `fetch` ignores `HTTPS_PROXY`
 unless `NODE_USE_ENV_PROXY=1` is set (Node ≥ 22.21).
+
+## 2026-11-26 — Position fixtures leave the repository
+
+Review of #1 found that `pnpm record-fixture` would write position fixtures to
+`tests/fixtures/orca/`, inside the repository and not ignored by git, so a recorded
+fixture would be one `git add -A` away from being committed. Two doc comments
+also contradicted AGENTS.md, calling position addresses "public on-chain data". A
+position leads to its NFT and to the wallet, so leaving the wallet out of the file
+does not hide it. This repository already had its history rewritten once for the same
+class of leak.
+
+### Wrong expectations
+
+1. **"Review the file before committing it" is a control.** It is a reminder, and the
+   rule it stands in for says real fixtures are never committed at all. A rule that
+   depends on someone remembering it fails on the first tired evening.
+2. **Sanitising the wallet out of a fixture makes it safe to share.** It removes one
+   identifier; the position addresses in the same file lead back to it.
+
+### What changed
+
+Four independent lines of defence, each tested:
+
+- the CLI writes to `$LPA_FIXTURE_DIR`, or under `$HOME`, never inside the repository,
+  and refuses to record when neither is known;
+- `.gitignore` covers `tests/fixtures/` and `*.fixture.json`;
+- `scripts/check-no-fixtures.mjs` rejects a staged fixture on commit and one anywhere
+  in the pushed history on push (it catches `git add -f`, and a fixture committed and
+  then deleted);
+- CI runs the same guard on the tree.
+
+### Proof the tests have teeth
+
+Each mutation applied, `tests/fixture-privacy.test.ts` run, reverted:
+
+- `tests/fixtures/` removed from `.gitignore` → 2 failures;
+- the guard's forbidden patterns emptied → 2 failures.
