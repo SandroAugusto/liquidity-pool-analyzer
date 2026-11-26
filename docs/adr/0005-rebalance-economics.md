@@ -24,7 +24,10 @@ L ≈ hL / 4 for ranges up to a few tens of percent, with s = 0 the ratio is ≈
 **the width cancels**, and whether re-centring pays depends on σ against a breakeven
 σ\* = k · hL / (L + s).
 
-The empirical parts, whether fees scale as σ / hL and what k is, are **not yet
+What is checked here is the mathematics, on synthetic inputs: L / hL stays within about 1 %
+of 1/4 up to ±4 % half-width and within 9 % at ±40 %; the loss is the same at both
+edges; and a Monte Carlo of a driftless walk reproduces E[T] = hL² / σ² from the
+centre. The empirical parts, whether fees scale as σ / hL and what k is, are **not yet
 validated**. They are to be measured on public data only: hourly public prices and
 public pool volume and fee data, with synthetic positions (AGENTS.md, "No owner
 position data").
