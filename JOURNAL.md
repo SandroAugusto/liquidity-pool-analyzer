@@ -322,6 +322,38 @@ One diagnostics gap: behind an HTTPS proxy the CLI fails with a bare
 `TypeError: fetch failed`, because Node's built-in `fetch` ignores `HTTPS_PROXY`
 unless `NODE_USE_ENV_PROXY=1` is set (Node ≥ 22.21).
 
+## 2026-10-24 (night) — Rebalance economics (ADR-0005)
+
+Built the re-centre economics model: a new module, `src/math/rebalance.ts`, with the
+swap cost as an explicit input and a fee model whose fee/cost ratio does not depend on
+the range width. The fee model is a hypothesis until it is validated on public data
+(ADR-0005).
+
+### Wrong expectations
+
+1. **Valuing a position closed out of range at the edge price is close enough.** It
+   understates divergence, because the real price was beyond the edge.
+2. **An optimum width can be read off σ alone.** Under the fee model the fee/cost
+   ratio does not depend on width; width only scales the result. A rule of thumb that
+   picks a width from σ mixes up the absolute margin with the ratio.
+3. **`logHalfWidth` always succeeds for a valid range.** The property suite found the
+   counterexample on its first run: for bounds a few ulps apart, both logs round to
+   the same double and the half-width underflows to zero. The typed error is the
+   right outcome; the expectation was wrong.
+4. **The swap cost is negligible, so leave it out.** Left out without a decision. It
+   is small at realistic widths (a few percent of the cost at ±4 %) but it is the only
+   term that makes width matter, so it is now an explicit input.
+
+### Proof the tests have teeth
+
+Each mutation applied to `src/math/rebalance.ts`, run against `tests/math`, reverted:
+
+- half-width without the `/ 2` → 8 failures;
+- swap dropped from the cost → 5;
+- E[T] using the distance to one bound twice → 4;
+- k inverted (fee · σ / hL) → 2;
+- cost per day linear in σ instead of quadratic → 4.
+
 ## 2026-11-26 — Position fixtures leave the repository
 
 Review of #1 found that `pnpm record-fixture` would write position fixtures to
