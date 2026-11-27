@@ -26,6 +26,7 @@
     "exit-time-study": "pnpm -s build && node dist/cli/exit-time-study.js",
     "exit-time-diagnostics": "pnpm -s build && node dist/cli/exit-time-diagnostics.js",
     "exit-time-forecast": "pnpm -s build && node dist/cli/exit-time-forecast.js",
+    "fee-snapshot": "pnpm -s build && node dist/cli/fee-snapshot.js",
     "prepare": "lefthook install"
   },
   "devDependencies": {
