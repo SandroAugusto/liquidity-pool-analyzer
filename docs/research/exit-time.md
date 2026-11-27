@@ -5,7 +5,17 @@ times simulated on real price paths match the model's E[T] = hL² / σ² when σ
 from a recent window, and how much does the window's length matter? Data and caching
 decisions are in [ADR-0006](../adr/0006-public-candles-for-research.md).
 
-**Result, in short:** not met, and the reasons are partly identified.
+**In three lines:**
+
+1. Don't size a range from E[T] = hL² / σ² alone. In the model the median exit comes
+   at 0.76 · E[T]; on SOL per BTC the median ±1 % range lasted 1.3 · E[T] on minute data (1.9 on hourly
+   closes, partly an artefact of checking only hourly), and ±8 % ranges 0.6 to
+   0.8 · E[T].
+2. Quantiles of T / E[T] measured on past data are close to calibrated on later data
+   at ±1 % to ±4 %; use those, not the model's.
+3. Fees are not in this study, and it runs on Coinbase prices, not on a pool.
+
+**Result, in detail:** not met, and the reasons are partly identified.
 
 - On hourly data, much of the apparent lateness of narrow ranges comes from checking
   the price only at hourly closes.
@@ -63,9 +73,7 @@ decisions are in [ADR-0006](../adr/0006-public-candles-for-research.md).
   the uncorrected E[T].
 
 Reproduce with `pnpm exit-time-study --from … --to … [--step minute]` (run on
-2026-11-26; candles can be revised, so a later run may differ slightly). A separate
-check outside the repository (a Python script, not published) reproduced the medians
-to two decimals; it is not evidence a reader can rerun.
+2026-11-26; candles can be revised, so a later run may differ slightly).
 
 ## Two years, hourly closes (2024-11-01 to 2026-11-01)
 
