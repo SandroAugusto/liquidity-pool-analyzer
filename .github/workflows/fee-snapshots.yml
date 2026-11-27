@@ -1,0 +1,61 @@
+# Hourly fee snapshots of the public Orca WBTC/SOL Whirlpools (ADR-0007).
+# Snapshots are appended to monthly JSON Lines files on the `data/fee-growth`
+# branch, never on `main`. Nothing here concerns any wallet or position.
+name: Fee snapshots
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fee-snapshots
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    name: Snapshot WBTC/SOL pools
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v4
+        with:
+          ref: data/fee-growth
+          path: data
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      # --ignore-scripts: no git hooks in the runner; the data branch has no lint or tests.
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: pnpm build
+
+      - name: Take a snapshot
+        env:
+          # Optional; empty when the secret is not set, which selects the public endpoint.
+          SOLANA_RPC_URL: ${{ secrets.SOLANA_RPC_URL }}
+        run: |
+          file="data/fee-growth/$(date -u +%Y-%m).jsonl"
+          for attempt in 1 2 3; do
+            if node dist/cli/fee-snapshot.js --out "$file"; then exit 0; fi
+            sleep 30
+          done
+          exit 1
+
+      - name: Commit to the data branch
+        working-directory: data
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add fee-growth
+          git commit -q -m "chore(data): fee snapshot $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -q origin HEAD:data/fee-growth
