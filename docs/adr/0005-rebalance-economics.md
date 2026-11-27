@@ -64,6 +64,13 @@ position data").
   tolerance across volatility regimes, with k estimated with a confidence interval;
   (2) exit times simulated on real hourly price paths match E[T] when σ is taken from
   a recent window, and the lag of a trailing window is quantified.
+- **Criterion 2, first result (2026-11-26, [report](../research/exit-time.md)):** not
+  met. On public SOL per BTC prices, much of the lateness of narrow ranges on hourly
+  data comes from checking only at closes; minute data still shows narrow ranges
+  exiting late at the median, wide ones early with a 30-day σ, and at ±8 %
+  over two years both tails are wider than the model. The lag of a trailing σ window was not measured. E[T] should
+  not be used as a point forecast of time in range until the width dependence is
+  explained.
 
 ## Alternatives considered
 
