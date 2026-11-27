@@ -503,3 +503,30 @@ and quantiles measured per width with E[T] from the geometric mean of the 7-day 
 - Counting an exited position that was not watched long enough fails
   `counts a test case for a quantile only if it was watched that long`.
 - Dropping the embargo fails `keeps an embargo before the split, in both directions`.
+
+## 2026-11-27 — Fees without an indexer
+
+`pnpm fee-snapshot` reads every public WBTC/SOL Whirlpool in one call and appends a
+snapshot per pool; a workflow runs it hourly and commits to the `data/fee-growth`
+branch ([ADR-0007](./docs/adr/0007-fee-growth-snapshots.md)).
+
+### Wrong expectations
+
+1. **That the fee study needed liquidity by tick over time.** ADR-0006 and the
+   exit-time report said so, and pointed to an indexer or a paid API. A position's fees
+   are its liquidity times the fee growth inside its range, and that inside growth
+   changes exactly as the pool's global growth while the price stays in range. For
+   synthetic centred positions, snapshots of one public account suffice.
+2. **That the free SQL services over Solana history were an option.** The one
+   checked now offers a trial only; free access is view-only.
+
+### Proof the tests have teeth
+
+- Dropping the √(10^dB / 10^dA) factor fails the comparison with the SDK's
+  `collectFeesQuote` on the recorded public pool.
+- Valuing the position at `√P · h` instead of `2√P · (1 − e^(−h/2))` fails
+  `matches src/math amounts` at h = 0.5.
+- Counting the interval in which an exit is seen fails
+  `stops at the first reading beyond a bound and does not count that interval`.
+- Treating an empty `SOLANA_RPC_URL` as an endpoint fails
+  `treats an empty SOLANA_RPC_URL (an unset workflow secret) as unset`.
