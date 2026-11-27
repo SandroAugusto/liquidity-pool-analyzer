@@ -19,6 +19,7 @@ import {
   logReturns,
   standardDeviation,
 } from '../math/index.js';
+import { at } from './at.js';
 
 /** A price series sampled at a fixed step. Prices are quote per base, > 0. */
 export interface PriceSeries {
@@ -82,6 +83,11 @@ export interface StudyOptions {
   readonly sigma: SigmaEstimator;
   /** Sampling step of the series, in seconds (3600 for hourly). */
   readonly stepSeconds: number;
+  /**
+   * Estimate σ on this series instead of the simulated one (same sample times).
+   * Used to run altered paths with the σ that the actual prices gave on each date.
+   */
+  readonly sigmaFrom?: PriceSeries;
 }
 
 export interface PositionOutcome {
@@ -102,15 +108,6 @@ export interface PositionOutcome {
 }
 
 const SECONDS_PER_DAY = 86_400;
-
-/** Indexed read that fails loudly instead of yielding undefined; callers stay in range. */
-function at(values: readonly number[], index: number): number {
-  const value = values[index];
-  if (value === undefined) {
-    throw new RangeError(`index ${String(index)} out of range`);
-  }
-  return value;
-}
 
 function sigmaAt(series: PriceSeries, index: number, options: StudyOptions): number | null {
   const { timesSeconds, prices } = series;
@@ -182,6 +179,17 @@ export function simulateCentredPositions(
   if (timesSeconds.length !== prices.length) {
     throw new RangeError('timesSeconds and prices must have the same length');
   }
+  const sigmaTimes = options.sigmaFrom?.timesSeconds;
+  if (
+    sigmaTimes !== undefined &&
+    (sigmaTimes.length !== timesSeconds.length ||
+      options.sigmaFrom?.prices.length !== timesSeconds.length ||
+      sigmaTimes.some((t, i) => t !== timesSeconds[i]))
+  ) {
+    throw new RangeError(
+      'sigmaFrom must have the same sample times as the series, and one price per time',
+    );
+  }
   for (let i = 1; i < timesSeconds.length; i++) {
     if (at(timesSeconds, i) <= at(timesSeconds, i - 1)) {
       throw new RangeError('timesSeconds must be strictly increasing');
@@ -197,7 +205,7 @@ export function simulateCentredPositions(
     if (openedAt % options.openEverySeconds !== 0) {
       continue;
     }
-    const sigmaPerDay = sigmaAt(series, i, options);
+    const sigmaPerDay = sigmaAt(options.sigmaFrom ?? series, i, options);
     if (sigmaPerDay === null || !(sigmaPerDay > 0)) {
       continue;
     }

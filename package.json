@@ -24,6 +24,7 @@
     "positions": "pnpm -s build && node dist/cli/positions.js",
     "record-fixture": "pnpm -s build && node dist/cli/record-fixture.js",
     "exit-time-study": "pnpm -s build && node dist/cli/exit-time-study.js",
+    "exit-time-diagnostics": "pnpm -s build && node dist/cli/exit-time-diagnostics.js",
     "prepare": "lefthook install"
   },
   "devDependencies": {

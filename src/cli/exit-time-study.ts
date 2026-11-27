@@ -38,7 +38,7 @@ export interface StudyDeps {
   readonly err: (text: string) => void;
 }
 
-interface Args {
+export interface Args {
   readonly fromSeconds: number;
   readonly toSeconds: number;
   readonly step: 'hour' | 'minute';
@@ -79,7 +79,7 @@ export function parseArgs(argv: readonly string[]): Args | null {
   return { fromSeconds, toSeconds, step };
 }
 
-async function closes(
+export async function closes(
   product: string,
   granularitySeconds: GranularitySeconds,
   args: Args,
@@ -101,7 +101,8 @@ async function closes(
 const pct = (x: number | null): string => (x === null ? 'n/a' : `${(x * 100).toFixed(1)} %`);
 const fixed = (x: number | null, digits = 2): string => (x === null ? 'n/a' : x.toFixed(digits));
 
-function grid(): number[] {
+/** c from 0.01 to 10 in steps of 0.01, for medians of T / E[T]. */
+export function grid(): number[] {
   return Array.from({ length: 1000 }, (_, i) => (i + 1) / 100);
 }
 
@@ -189,23 +190,35 @@ async function getJson(url: string): Promise<unknown> {
   }
 }
 
-if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main(process.argv.slice(2), {
+/** Network, cache and console for a real run. */
+export function processDeps(): StudyDeps {
+  return {
     get: getJson,
-    readCache: async (key) => {
+    readCache: async (key): Promise<string | null> => {
       try {
         return await readFile(`${CACHE_DIR}/${key}`, 'utf8');
       } catch {
         return null;
       }
     },
-    writeCache: async (key, contents) => {
+    writeCache: async (key, contents): Promise<void> => {
       await mkdir(CACHE_DIR, { recursive: true });
       await writeFile(`${CACHE_DIR}/${key}`, contents);
     },
     out: (text) => process.stdout.write(text),
     err: (text) => process.stderr.write(text),
-  }).then(
+  };
+}
+
+/** Runs `run` with the process's arguments when `moduleUrl` is the script node was started with. */
+export function runIfScript(
+  moduleUrl: string,
+  run: (argv: readonly string[], deps: StudyDeps) => Promise<number>,
+): void {
+  if (process.argv[1] === undefined || moduleUrl !== pathToFileURL(process.argv[1]).href) {
+    return;
+  }
+  run(process.argv.slice(2), processDeps()).then(
     (code) => {
       process.exitCode = code;
     },
@@ -215,4 +228,6 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
     },
   );
 }
+
+runIfScript(import.meta.url, main);
 /* c8 ignore stop */
