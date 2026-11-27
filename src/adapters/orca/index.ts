@@ -7,3 +7,5 @@ export { FixtureMismatchError, recordingPort, replayPort } from './fixture.js';
 export type { Fixture } from './fixture.js';
 export { createRpcPort } from './rpc.js';
 export type { RawAccount, SolanaReadPort } from './port.js';
+export { FEE_TIER_INDEXES, readPools, whirlpoolAddressesForPair } from './read-pools.js';
+export type { ReadPoolsOptions } from './read-pools.js';
