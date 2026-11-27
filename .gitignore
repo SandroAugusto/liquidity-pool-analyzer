@@ -11,3 +11,6 @@ coverage/
 # outside the repository. Ignored here as well, as a second line of defence.
 tests/fixtures/
 *.fixture.json
+
+# Public market data downloaded by research commands (ADR-0006); never committed.
+.cache/

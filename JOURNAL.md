@@ -452,3 +452,88 @@ Lessons:
 3. **The audit is done by someone who did not do the cleaning, and repeated until it
    finds nothing.** Two independent audits found what the author of the clean-up did
    not, including a value restated in the entry that described its removal.
+
+## 2026-11-26 (night) — Exit times on public prices (ADR-0005 criterion 2, ADR-0006)
+
+Synthetic centred positions on public SOL per BTC prices (Coinbase candles), opened
+daily over two years of hourly closes and 120 days of minute closes, compared with the
+survival function of the exit time from the centre. Report:
+`docs/research/exit-time.md`.
+
+### Wrong expectations
+
+1. **That the late exits were the market's.** On hourly data a ±1 % range exited at a
+   median of 1.89 · E[T] against 0.757 over two years. Much of that is the sampling: an
+   exit is only seen at a close. Over the same 120 days, hourly closes give 1.77 and
+   minute closes 1.29: still late, but less. The Broadie–Glasserman–Kou correction brings hourly
+   figures closer to minute ones with the 30-day σ from ±1 % to ±4 % (at ±8 % it is
+   small and moves them slightly apart), but it is rough at ±1 % on hourly
+   data, so minute data is the evidence for narrow ranges.
+2. **That this would settle the σ window.** ADR-0005 recommended a recent window
+   because volatility clusters. Over two years the 7-day and 30-day windows give
+   medians within 0.04; over 120 days the two open different positions, so their
+   tables are not a like-for-like comparison. Neither says anything
+   about lag, which needs exit times conditioned on a change of regime. That part of
+   criterion 2 is still open.
+3. **That the daily σ window was complete.** It accepted a window with a missing daily
+   close, which would treat a two-day return as a daily one (and threw on a window with
+   only one return). A test with a gap found it; it now requires every close. No study
+   result changed: none of the windows used had a gap.
+4. **That the censoring was neutral.** The first version counted a position watched
+   for less than c · E[T] if it had exited and dropped it if it had not, which selects
+   on the outcome. An independent review found it; over 120 days of hourly data with the
+   30-day σ it had turned the ±8 % cell at 2 · E[T] from 90.9 % (33 positions) into 95.8 % (71). Only positions watched
+   for c · E[T] now count, and every cell shows its n. The same review caught prose
+   that generalised one table cell ("tails wider at every width") to all of them.
+
+### Proof the tests have teeth
+
+- Treating a sample exactly on a bound as still in range fails
+  `counts a sample exactly on a bound as an exit`.
+- Counting an early exit of a position not watched for c · E[T] fails
+  `counts only positions watched for c·E[T], exited or not`.
+- Ignoring the discretely monitored E[T] fails
+  `measures against the discretely monitored E[T] when asked`.
+- Using Δt instead of √Δt in the correction fails both the independent value and the
+  seeded Monte Carlo of the mean exit time.
+- A separate Python script, outside the repository, reproduced the medians to two
+  decimals.
+
+## 2026-11-26 (late night) — What explains the exit-time differences
+
+`pnpm exit-time-diagnostics` adds variance ratios against a sign-randomised null,
+surrogate paths (signs randomised, returns shuffled, Gaussian walk; 40 seeds each),
+tails against the same surrogates, the two σ windows on the same opening dates, and
+trailing σ against the σ of the following week. Results in the report's diagnostics
+section.
+
+### Wrong expectations
+
+1. **That mean reversion explained the narrow ranges.** Variance ratios below 1
+   made it the obvious candidate. At ±1 % on hourly data, randomising the signs of
+   returns leaves the median at 1.15 (1.10 with the actual σ) against an actual 1.14,
+   shuffled returns give 1.02 and a Gaussian walk 0.77: the sizes of moves matter most
+   there. At ±2 % and on minute data the result depends on how σ is estimated on the
+   altered paths, so direction is not ruled out.
+2. **That a first draft of these diagnostics was ready to publish.** An independent
+   review found it overstated four causes: clustering as the cause when fat tails could
+   explain as much, mean reversion "at every horizon" without a null, a shift of the model's median
+   under the estimator that was inside the noise, and "calm periods" for what was a
+   fall in volatility. The fixes added a null for the variance ratio, a second σ
+   convention for the surrogates, and a tail table. A second review then found the
+   revised claims still broader than the tables at other widths and on minute data;
+   they now say what is and is not separated.
+3. **That 120 days of minute data were the better evidence.** For the measurement at
+   ±1 % they are, but across seeds the Gaussian walk's ±1 % median spans 0.62–1.00
+   (10th–90th percentile) on 120 days: too short for most conclusions.
+4. **That a long window lags when volatility rises.** It overshoots after volatility
+   falls, by about 30 %; after a rise it is nearly unbiased and the 7-day window
+   overshoots by about 45 %, probably partly regression to the mean of its own noise
+   (not tested).
+
+### Proof the tests have teeth
+
+- Never flipping a sign fails
+  `sign flipping keeps each return size in place and the first price and times`.
+- Pairing returns by position instead of by time fails `never bridges a gap`.
+- Ignoring `sigmaFrom` fails `can take σ from another series with the same times`.
