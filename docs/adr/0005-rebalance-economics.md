@@ -72,8 +72,10 @@ position data").
   the median is within the method's noise but both tails are wider. The lag is
   quantified: trailing 7- and 30-day σ (from hourly returns) both miss the next week's σ by a factor of about
   1.4 (root mean square); the 7-day window overshoots after rises and the 30-day after
-  falls. E[T] should not be used as a point forecast of time in range; a distribution
-  conditioned on recent volatility is a candidate for the next study.
+  falls. E[T] should not be used as a point forecast of time in range. Out of sample,
+  quantiles of T / E[T] measured on the previous year, with E[T] from the geometric
+  mean of the 7-day and 30-day σ, are close to calibrated at ±1 % to ±4 %; that is
+  the current candidate for forecasting time in range.
 
 ## Alternatives considered
 

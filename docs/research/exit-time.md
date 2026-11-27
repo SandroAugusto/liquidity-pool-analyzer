@@ -19,6 +19,9 @@ decisions are in [ADR-0006](../adr/0006-public-candles-for-research.md).
 - Both trailing σ windows miss the next week's σ by a similar amount; the 7-day window
   overshoots after volatility rises and the 30-day window after it falls.
 - 120 days of data are too short to separate these effects.
+- As a forecast, the model's quantiles of T are miscalibrated out of sample; quantiles
+  of T / E[T] measured on one side of a split in time, with E[T] from the geometric mean of the 7-day and
+  30-day σ, are close to calibrated on the other side of the split at ±1 % to ±4 %.
 - Fees are not part of this study.
 
 ## Method
@@ -363,6 +366,98 @@ All σ from the same one-step returns. Cells: median ln(forecast / realised) (> 
    10th–90th percentile of 0.62–1.00 across seeds, wider than most of the effects in
    this report. Points 1, 4 and 5 rest on the two years of hourly data; the minute
    results in points 2, 3 and 6 are indicative only.
+
+## Forecasting time in range
+
+`pnpm exit-time-forecast --from 2024-11-01 --to 2026-11-01 --split 2025-11-01 --boot 200`.
+If E[T] is not a reliable forecast, what is? Each method predicts the 10th, 50th and
+90th percentiles of T for a new position as q · E[T]:
+
+- **Model:** q from the driftless walk (0.757 for the median), E[T] from the 30-day σ;
+- **Empirical:** q measured on earlier positions of the same width (fixed-horizon
+  counting, as in the calibration tables), E[T] from the 30-day σ;
+- **Empirical by regime:** the same, measured separately in each tercile of 7-day σ
+  over 30-day σ at opening;
+- **Empirical, blended σ:** q measured per width, with E[T] from the geometric mean of
+  the 7-day and 30-day σ.
+
+Every E[T] is corrected for checks at closes. Methods are fitted on one side of the split and tested
+on the other, in both directions, with 30 days before the split left out. On this data
+every position on the earlier side had exited before the later side began (checked;
+the code does not enforce it, so wider ranges or a shorter embargo would need the check
+again). A forecast is calibrated when, in each
+volatility regime, 10 %, 50 % and 90 % of the test positions have exited by its 10th,
+50th and 90th percentiles; the score is the mean distance from those targets. The
+brackets are 10th–90th percentiles (an 80 % band) from resampling test days in 30-day
+blocks, with every method scored on the same resamples.
+
+#### Train on positions opened before 2025-10-02, test from 2025-11-01
+
+305 training and 365 test opening days. Regime terciles of 7-day σ / 30-day σ, cut on the training days: below 0.87, 0.87–1.15, above 1.15.
+
+Mean |coverage − target| over the three regimes and the 10th, 50th and 90th percentiles (0 is calibrated). In brackets: 10th–90th percentile of the difference from the baseline (Empirical, 30-day σ) over 200 paired block-bootstrap resamples of the test days (30-day blocks); a bracket entirely below 0 means better than the baseline on these resamples.
+
+| Method                        |                     ±1 % |                     ±2 % |                     ±4 % |                     ±8 % |
+| ----------------------------- | -----------------------: | -----------------------: | -----------------------: | -----------------------: |
+| Model, 30-day σ               | 0.128 [+0.033 to +0.062] | 0.139 [+0.038 to +0.064] | 0.110 [+0.006 to +0.036] | 0.117 [+0.003 to +0.031] |
+| Empirical, 30-day σ           |         0.079 (baseline) |         0.077 (baseline) |         0.081 (baseline) |         0.096 (baseline) |
+| Empirical by regime, 30-day σ | 0.058 [-0.039 to -0.001] | 0.071 [-0.026 to +0.006] | 0.058 [-0.032 to +0.009] | 0.077 [-0.035 to -0.002] |
+| Empirical, blended σ          | 0.031 [-0.055 to -0.021] | 0.050 [-0.036 to -0.013] | 0.064 [-0.031 to +0.009] | 0.066 [-0.043 to -0.002] |
+
+Coverage of the predicted 10th / 50th / 90th percentiles of T, all regimes together (targets 0.1 / 0.5 / 0.9).
+
+| Method                        |               ±1 % |               ±2 % |               ±4 % |               ±8 % |
+| ----------------------------- | -----------------: | -----------------: | -----------------: | -----------------: |
+| Model, 30-day σ               | 0.08 / 0.35 / 0.75 | 0.10 / 0.37 / 0.78 | 0.13 / 0.44 / 0.81 | 0.18 / 0.53 / 0.79 |
+| Empirical, 30-day σ           | 0.10 / 0.49 / 0.90 | 0.11 / 0.51 / 0.92 | 0.12 / 0.49 / 0.92 | 0.11 / 0.53 / 0.79 |
+| Empirical by regime, 30-day σ | 0.10 / 0.51 / 0.89 | 0.10 / 0.49 / 0.87 | 0.15 / 0.47 / 0.93 | 0.12 / 0.53 / 0.81 |
+| Empirical, blended σ          | 0.10 / 0.51 / 0.89 | 0.10 / 0.52 / 0.92 | 0.14 / 0.48 / 0.93 | 0.11 / 0.51 / 0.82 |
+
+#### Train on positions opened from 2025-11-01, test before 2025-10-02
+
+365 training and 305 test opening days. Regime terciles of 7-day σ / 30-day σ, cut on the training days: below 0.90, 0.90–1.09, above 1.09.
+
+Mean |coverage − target| over the three regimes and the 10th, 50th and 90th percentiles (0 is calibrated). In brackets: 10th–90th percentile of the difference from the baseline (Empirical, 30-day σ) over 200 paired block-bootstrap resamples of the test days (30-day blocks); a bracket entirely below 0 means better than the baseline on these resamples.
+
+| Method                        |                     ±1 % |                     ±2 % |                     ±4 % |                     ±8 % |
+| ----------------------------- | -----------------------: | -----------------------: | -----------------------: | -----------------------: |
+| Model, 30-day σ               | 0.092 [+0.032 to +0.063] | 0.076 [+0.005 to +0.032] | 0.073 [+0.004 to +0.027] | 0.045 [-0.036 to -0.003] |
+| Empirical, 30-day σ           |         0.046 (baseline) |         0.061 (baseline) |         0.058 (baseline) |         0.082 (baseline) |
+| Empirical by regime, 30-day σ | 0.033 [-0.027 to +0.013] | 0.079 [-0.008 to +0.041] | 0.080 [-0.013 to +0.058] | 0.094 [-0.019 to +0.043] |
+| Empirical, blended σ          | 0.020 [-0.032 to -0.002] | 0.034 [-0.037 to -0.001] | 0.030 [-0.040 to +0.008] | 0.058 [-0.038 to +0.003] |
+
+Coverage of the predicted 10th / 50th / 90th percentiles of T, all regimes together (targets 0.1 / 0.5 / 0.9).
+
+| Method                        |               ±1 % |               ±2 % |               ±4 % |               ±8 % |
+| ----------------------------- | -----------------: | -----------------: | -----------------: | -----------------: |
+| Model, 30-day σ               | 0.08 / 0.36 / 0.77 | 0.09 / 0.38 / 0.79 | 0.11 / 0.45 / 0.80 | 0.15 / 0.50 / 0.90 |
+| Empirical, 30-day σ           | 0.10 / 0.52 / 0.90 | 0.10 / 0.50 / 0.89 | 0.06 / 0.53 / 0.87 | 0.09 / 0.42 / 0.97 |
+| Empirical by regime, 30-day σ | 0.09 / 0.49 / 0.89 | 0.11 / 0.50 / 0.86 | 0.08 / 0.52 / 0.85 | 0.10 / 0.53 / 0.92 |
+| Empirical, blended σ          | 0.10 / 0.50 / 0.91 | 0.11 / 0.49 / 0.89 | 0.07 / 0.51 / 0.89 | 0.11 / 0.50 / 0.96 |
+
+### What the forecasts show
+
+1. **The model's quantiles are miscalibrated out of sample.** At ±1 % in both
+   directions, only 35–36 % of positions had exited by the model's median and 75–77 %
+   by its 90th percentile. Its score is worse than the empirical baseline at ±1 % to
+   ±4 % in both directions (brackets above 0). At ±8 % it is worse in one direction and
+   better in the other.
+2. **Quantiles measured on one side of the split are close to calibrated on the other at ±1 % to
+   ±4 %.** All regimes together, the empirical methods' coverage is within 0.05 of the
+   10 / 50 / 90 % targets at those widths in both directions. At ±8 % the 90th
+   percentile misses in both directions (0.79 to 0.82 in one, 0.92 to 0.97 in the
+   other), and with the 30-day σ the reverse median is 0.42.
+3. **The blended σ helps at narrow widths; regime buckets do not reliably.** With E[T]
+   from the blended σ, the score is better than the baseline at ±1 % and ±2 % in both
+   directions, firmly when training on the first year and borderline the other way
+   (the 80 % bands end at −0.002 and −0.001); at ±4 % and ±8 % it is better in one case
+   and not distinguishable in the other three. Measuring quantiles per regime is better
+   than the baseline at two of four widths when training on the first year and not
+   distinguishable elsewhere.
+4. **Limits.** One pair, one venue, two years split in two. Positions overlap within
+   each year, which the block bootstrap only partly accounts for; regimes are cut on
+   the training year. The forecast is for centred positions and says nothing about
+   fees.
 
 ## Not covered
 
