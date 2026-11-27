@@ -537,3 +537,32 @@ section.
   `sign flipping keeps each return size in place and the first price and times`.
 - Pairing returns by position instead of by time fails `never bridges a gap`.
 - Ignoring `sigmaFrom` fails `can take σ from another series with the same times`.
+
+## 2026-11-27 — Forecasting time in range out of sample
+
+`pnpm exit-time-forecast` fits four forecasts of the 10th, 50th and 90th percentiles of
+T on one year and tests them on the other, in both directions, with a 30-day embargo:
+the model's quantiles, quantiles measured per width, the same per volatility regime,
+and quantiles measured per width with E[T] from the geometric mean of the 7-day and
+30-day σ. Results in the report's forecasting section.
+
+### Wrong expectations
+
+1. **That conditioning on the volatility regime would be the improvement.** Regime
+   buckets beat the baseline at two widths when training on the first year and at none
+   the other way. The blended σ beat it at ±1 % and ±2 % in both directions, though
+   only borderline when training on the second year.
+2. **That a bootstrap band around each score would compare methods.** A mean of
+   absolute errors is biased upward under resampling, so the point estimates sat at
+   the bottom of their own bands. Scoring every method on the same resamples and
+   reporting the band of the difference from a baseline cancels most of that.
+3. **That the coverage counting was obviously right.** A first version of the test
+   would have passed with early exits of positions not watched long enough counted
+   as covered, the same outcome selection fixed earlier in calibration. A case for it
+   is now in the test.
+
+### Proof the tests have teeth
+
+- Counting an exited position that was not watched long enough fails
+  `counts a test case for a quantile only if it was watched that long`.
+- Dropping the embargo fails `keeps an embargo before the split, in both directions`.
