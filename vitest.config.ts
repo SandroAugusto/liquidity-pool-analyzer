@@ -14,6 +14,7 @@ export const coverageThresholds = {
   'src/adapters/**': { lines: 80, functions: 80, branches: 75, statements: 80 },
   'src/positions/**': { lines: 95, functions: 95, branches: 95, statements: 95 },
   'src/cli/**': { lines: 90, functions: 90, branches: 85, statements: 90 },
+  'src/research/**': { lines: 95, functions: 95, branches: 90, statements: 95 },
 };
 
 export default defineConfig({
