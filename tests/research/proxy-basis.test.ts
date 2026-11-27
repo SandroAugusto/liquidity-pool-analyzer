@@ -7,28 +7,37 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { quotePerBase, tokenAmounts } from '../../src/math/index.js';
+import { InvalidPriceError, quotePerBase, tokenAmounts } from '../../src/math/index.js';
 import type { PoolSnapshot } from '../../src/research/fee-snapshots.js';
-import { matchBasis, nearestRank, summarizeBasis } from '../../src/research/proxy-basis.js';
+import {
+  PairMismatchError,
+  matchBasis,
+  nearestRank,
+  summarizeBasis,
+} from '../../src/research/proxy-basis.js';
 import type { BasisObservation } from '../../src/research/proxy-basis.js';
 
 const DEEP = 'B5EwJVDuAauzUEEdwvbuXzbFFgEYnUqqS37TUM1c4PQA';
 const THIN = '3JeYSHtmYsfCjSq4FT6P2wRDuoQDasw1SyPTL8xVGMfA';
+
+const WBTC = { mint: '3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh', decimals: 8 };
+const SOL = { mint: 'So11111111111111111111111111111111111111112', decimals: 9 };
+const USDC = { mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', decimals: 6 };
+/** The reference in these tests is SOL per WBTC. */
+const PAIR = { baseMint: WBTC.mint, quoteMint: SOL.mint };
 
 function snapshot(
   pool: string,
   observedAt: string,
   price: number,
   liquidity: number,
+  pair = { base: WBTC, quote: SOL },
 ): PoolSnapshot {
   return {
     observedAt: new Date(observedAt),
     reading: {
       source: { protocol: 'orca-whirlpool', pool },
-      pair: {
-        base: { mint: '3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh', decimals: 8 },
-        quote: { mint: 'So11111111111111111111111111111111111111112', decimals: 9 },
-      },
+      pair,
       price: quotePerBase(price),
       liquidity,
       feeGrowthPerLiquidity: tokenAmounts(0, 0),
@@ -53,6 +62,7 @@ describe('matchBasis', () => {
       [snapshot(DEEP, '2026-11-27T18:10:18.801Z', 833.41, 7848)],
       reference,
       60,
+      PAIR,
     );
     expect(observations).toHaveLength(1);
     const [o] = observations;
@@ -69,15 +79,46 @@ describe('matchBasis', () => {
       ],
       reference,
       60,
+      PAIR,
     );
     expect(result).toEqual({ observations: [], skippedNoLiquidity: 1, skippedNoReference: 1 });
   });
 
   it('refuses a bad step or a malformed reference', () => {
-    expect(() => matchBasis([], reference, 0)).toThrow(RangeError);
-    expect(() => matchBasis([], reference, 1.5)).toThrow(RangeError);
-    expect(() => matchBasis([], { timesSeconds: [0], prices: [] }, 60)).toThrow(RangeError);
+    expect(() => matchBasis([], reference, 0, PAIR)).toThrow(RangeError);
+    expect(() => matchBasis([], reference, 1.5, PAIR)).toThrow(RangeError);
+    expect(() => matchBasis([], { timesSeconds: [0], prices: [] }, 60, PAIR)).toThrow(RangeError);
   });
+
+  // Review of #8: 1/800 WBTC per SOL and 800 SOL per BTC are the same market
+  // level, and comparing them as given reported ln((1/800) / 800) ≈ −13.37.
+  it('refuses a snapshot that quotes the pair in reverse', () => {
+    const reversed = snapshot(DEEP, '2026-11-27T18:10:18Z', 1 / 800, 7848, {
+      base: SOL,
+      quote: WBTC,
+    });
+    expect(() => matchBasis([reversed], reference, 60, PAIR)).toThrow(PairMismatchError);
+    expect(() => matchBasis([reversed], reference, 60, PAIR)).toThrow(/in reverse/);
+  });
+
+  it('refuses a snapshot of another pair, even among valid ones', () => {
+    const other = snapshot(THIN, '2026-11-27T18:10:18Z', 150, 10, { base: SOL, quote: USDC });
+    const valid = snapshot(DEEP, '2026-11-27T18:10:18Z', 833.41, 7848);
+    expect(() => matchBasis([valid, other], reference, 60, PAIR)).toThrow(PairMismatchError);
+    expect(() => matchBasis([valid, other], reference, 60, PAIR)).toThrow(/another pair/);
+  });
+
+  // Review of #8: a reference price of 0 gave logBasis Infinity, and −1 gave NaN.
+  it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY])(
+    'refuses a reference price of %s instead of reporting a basis',
+    (bad) => {
+      const badReference = { timesSeconds: reference.timesSeconds, prices: [bad, 999] };
+      const valid = snapshot(DEEP, '2026-11-27T18:10:18Z', 800, 7848);
+      expect(() => matchBasis([valid], badReference, 60, PAIR)).toThrow(InvalidPriceError);
+      // Also when no snapshot would use that price: the series itself is invalid.
+      expect(() => matchBasis([], badReference, 60, PAIR)).toThrow(InvalidPriceError);
+    },
+  );
 });
 
 function obs(
@@ -93,8 +134,8 @@ function obs(
     liquidity,
     observedAtSeconds: t,
     referenceAtSeconds: t,
-    poolPrice: referencePrice * Math.exp(logBasis),
-    referencePrice,
+    poolPrice: quotePerBase(referencePrice * Math.exp(logBasis)),
+    referencePrice: quotePerBase(referencePrice),
     logBasis,
   };
 }

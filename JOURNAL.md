@@ -547,6 +547,18 @@ that cross price with each Orca WBTC/SOL pool's price in the fee snapshots.
   their own pool's price, so only the change in basis between observations matters.
   The tool reports both, and the report says which one is the test.
 
+- **A snapshot that parses is a snapshot of the pair.** The snapshot format accepts any
+  base and quote mints, and the comparison assumed WBTC base, SOL quote without checking.
+  A reading quoted the other way round (1/800 WBTC per SOL against 800 SOL per BTC, the
+  same market level) was reported as a basis of −133692 bp with exit code 0 (review of
+  #8). A reference series has no pair of its own, so the caller now states which pair it
+  prices and every snapshot is checked against it; a reversed reading is refused, not
+  inverted.
+- **A length check validates a price series.** `matchBasis` took reference prices as
+  plain numbers: 0 gave an infinite basis and −1 gave `NaN`, both carried into the
+  summary (review of #8). Reference prices now pass through `quotePerBase` and the
+  observations keep the branded type.
+
 ### Proof the tests have teeth
 
 - `tests/research/proxy-basis.test.ts`: a reference bucket that closes after the

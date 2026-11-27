@@ -29,15 +29,22 @@ function fakeEndpoint(calls: string[]) {
   };
 }
 
-function line(pool: string, observedAt: string, price: number, liquidity: number): string {
+const WBTC = { mint: '3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh', decimals: 8 };
+const SOL = { mint: 'So11111111111111111111111111111111111111112', decimals: 9 };
+const USDC = { mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', decimals: 6 };
+
+function line(
+  pool: string,
+  observedAt: string,
+  price: number,
+  liquidity: number,
+  pair = { base: WBTC, quote: SOL },
+): string {
   return formatSnapshotLine({
     observedAt: new Date(observedAt),
     reading: {
       source: { protocol: 'orca-whirlpool', pool },
-      pair: {
-        base: { mint: '3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh', decimals: 8 },
-        quote: { mint: 'So11111111111111111111111111111111111111112', decimals: 9 },
-      },
+      pair,
       price: quotePerBase(price),
       liquidity,
       feeGrowthPerLiquidity: tokenAmounts(0, 0),
@@ -96,6 +103,29 @@ describe('proxy-basis', () => {
       expect(await main(argv, d)).toBe(2);
       expect(err.join('')).toMatch(/^usage:/);
     }
+  });
+
+  // Review of #8: the reference is 800 SOL per BTC; a pool reading of 1/800
+  // WBTC per SOL is the same level, and was reported as a basis of −133692 bp.
+  it('refuses a snapshot quoted in reverse, before any download', async () => {
+    const contents = [
+      line(DEEP, '2026-11-27T18:17:05Z', 800, 7800),
+      line(DEEP, '2026-11-27T19:17:05Z', 1 / 800, 7900, { base: SOL, quote: WBTC }),
+    ].join('\n');
+    const { d, calls, out, err } = deps({ 'a.jsonl': contents });
+    expect(await main(['a.jsonl'], d)).toBe(1);
+    expect(err.join('')).toContain(`Pool ${DEEP} quotes the pair in reverse`);
+    expect(out).toEqual([]);
+    expect(calls).toEqual([]);
+  });
+
+  it('refuses a snapshot of another pair', async () => {
+    const contents = line(DEEP, '2026-11-27T18:17:05Z', 150, 7800, { base: SOL, quote: USDC });
+    const { d, calls, out, err } = deps({ 'a.jsonl': contents });
+    expect(await main(['a.jsonl'], d)).toBe(1);
+    expect(err.join('')).toContain(`Pool ${DEEP} is of another pair`);
+    expect(out).toEqual([]);
+    expect(calls).toEqual([]);
   });
 
   it('fails when the files hold no snapshot', async () => {

@@ -19,11 +19,55 @@
  *
  * Prices are quote per base throughout (SOL per WBTC). Basis values are natural
  * log ratios, plain numbers: 0.001 is about 0.1 %.
+ *
+ * A basis only means something when both prices quote the same pair the same
+ * way round. The reference carries no pair of its own, so the caller states
+ * which pair it prices ({@link ReferencePair}) and every snapshot is checked
+ * against it: a pool of another pair, or the same pair reversed, is refused
+ * rather than compared.
  */
 
+import { quotePerBase } from '../math/index.js';
+import type { QuotePerBase } from '../math/index.js';
 import { at } from './at.js';
 import type { PriceSeries } from './exit-time.js';
 import type { PoolSnapshot } from './fee-snapshots.js';
+
+/** The pair the reference prices, as token mints: the reference is `quoteMint` per `baseMint`. */
+export interface ReferencePair {
+  readonly baseMint: string;
+  readonly quoteMint: string;
+}
+
+/** A snapshot of a pool whose pair, or whose price direction, is not the reference's. */
+export class PairMismatchError extends RangeError {
+  constructor(pool: string, found: ReferencePair, expected: ReferencePair) {
+    const reversed = found.baseMint === expected.quoteMint && found.quoteMint === expected.baseMint;
+    super(
+      `Pool ${pool} ${reversed ? 'quotes the pair in reverse' : 'is of another pair'}: ` +
+        `base ${found.baseMint}, quote ${found.quoteMint}; the reference is ` +
+        `base ${expected.baseMint}, quote ${expected.quoteMint}`,
+    );
+    this.name = 'PairMismatchError';
+  }
+}
+
+/**
+ * Throws {@link PairMismatchError} unless every snapshot is of `pair`, with the
+ * same base and quote. Nothing is normalised: a reversed reading is refused,
+ * not inverted.
+ */
+export function assertSnapshotsOfPair(
+  snapshots: readonly PoolSnapshot[],
+  pair: ReferencePair,
+): void {
+  for (const { reading } of snapshots) {
+    const found = { baseMint: reading.pair.base.mint, quoteMint: reading.pair.quote.mint };
+    if (found.baseMint !== pair.baseMint || found.quoteMint !== pair.quoteMint) {
+      throw new PairMismatchError(reading.source.pool, found, pair);
+    }
+  }
+}
 
 /** One snapshot of one pool matched with the reference. */
 export interface BasisObservation {
@@ -37,9 +81,9 @@ export interface BasisObservation {
   /** Time of the reference close used, epoch seconds; at or before `observedAtSeconds`. */
   readonly referenceAtSeconds: number;
   /** Pool price, quote per base. */
-  readonly poolPrice: number;
+  readonly poolPrice: QuotePerBase;
   /** Reference price, quote per base. */
-  readonly referencePrice: number;
+  readonly referencePrice: QuotePerBase;
   /** ln(pool price / reference price). */
   readonly logBasis: number;
 }
@@ -63,11 +107,16 @@ export interface BasisMatch {
  * σ · √step to every observation, which the report states.
  *
  * `reference.timesSeconds` are bucket starts, as from the Coinbase adapter.
+ * `reference.prices` are quote per base of `referencePair`; each one is
+ * validated here ({@link quotePerBase}), so a zero, negative or non-finite
+ * price throws instead of becoming an infinite or `NaN` basis. Every snapshot
+ * must be of `referencePair` ({@link assertSnapshotsOfPair}).
  */
 export function matchBasis(
   snapshots: readonly PoolSnapshot[],
   reference: PriceSeries,
   stepSeconds: number,
+  referencePair: ReferencePair,
 ): BasisMatch {
   if (!Number.isInteger(stepSeconds) || stepSeconds <= 0) {
     throw new RangeError(`stepSeconds must be a positive integer, got ${String(stepSeconds)}`);
@@ -75,9 +124,10 @@ export function matchBasis(
   if (reference.timesSeconds.length !== reference.prices.length) {
     throw new RangeError('reference times and prices must have the same length');
   }
-  const byBucketStart = new Map<number, number>();
+  assertSnapshotsOfPair(snapshots, referencePair);
+  const byBucketStart = new Map<number, QuotePerBase>();
   reference.timesSeconds.forEach((t, i) => {
-    byBucketStart.set(t, at(reference.prices, i));
+    byBucketStart.set(t, quotePerBase(at(reference.prices, i)));
   });
   const observations: BasisObservation[] = [];
   let skippedNoLiquidity = 0;

@@ -22,13 +22,24 @@ import { pathToFileURL } from 'node:url';
 import { crossPrice } from '../research/exit-time.js';
 import { parseSnapshotLines } from '../research/fee-snapshots.js';
 import type { PoolSnapshot } from '../research/fee-snapshots.js';
-import { matchBasis, summarizeBasis } from '../research/proxy-basis.js';
-import type { BasisSummary } from '../research/proxy-basis.js';
+import {
+  PairMismatchError,
+  assertSnapshotsOfPair,
+  matchBasis,
+  summarizeBasis,
+} from '../research/proxy-basis.js';
+import type { BasisSummary, ReferencePair } from '../research/proxy-basis.js';
 import { closes, processDeps } from './exit-time-study.js';
 import type { StudyDeps } from './exit-time-study.js';
+import { PAIR } from './fee-snapshot.js';
 
 const USAGE = 'usage: pnpm proxy-basis <snapshots.jsonl> [more.jsonl …]';
 const STEP_SECONDS = 60;
+/**
+ * What the reference prices: Coinbase BTC-USD ÷ SOL-USD is SOL per BTC, compared
+ * with pools whose base is WBTC and whose quote is SOL.
+ */
+const REFERENCE_PAIR: ReferencePair = { baseMint: PAIR.WBTC, quoteMint: PAIR.SOL };
 
 export interface ProxyDeps extends StudyDeps {
   readonly readText: (path: string) => Promise<string>;
@@ -64,6 +75,18 @@ export async function main(argv: readonly string[], deps: ProxyDeps): Promise<nu
     deps.err('No snapshots in the given files.\n');
     return 1;
   }
+  // Before any download: a pool of another pair, or quoted the other way round,
+  // cannot be compared with this reference.
+  try {
+    assertSnapshotsOfPair(snapshots, REFERENCE_PAIR);
+  } catch (error) {
+    if (error instanceof PairMismatchError) {
+      deps.err(`${error.message}\n`);
+      return 1;
+    }
+    /* c8 ignore next 2 -- assertSnapshotsOfPair throws only PairMismatchError */
+    throw error;
+  }
   const times = snapshots.map((x) => x.observedAt.getTime() / 1000);
   const bucket = (t: number): number => Math.floor(t / STEP_SECONDS) * STEP_SECONDS;
   // matchBasis uses the bucket that closes at or before each snapshot.
@@ -75,7 +98,7 @@ export async function main(argv: readonly string[], deps: ProxyDeps): Promise<nu
   const btc = await closes('BTC-USD', STEP_SECONDS, args, deps);
   const sol = await closes('SOL-USD', STEP_SECONDS, args, deps);
   const reference = crossPrice(btc, sol);
-  const match = matchBasis(snapshots, reference, STEP_SECONDS);
+  const match = matchBasis(snapshots, reference, STEP_SECONDS, REFERENCE_PAIR);
   const summaries = summarizeBasis(match.observations);
   const iso = (t: number): string => new Date(t * 1000).toISOString().slice(0, 16);
   deps.out(
