@@ -530,3 +530,25 @@ branch ([ADR-0007](./docs/adr/0007-fee-growth-snapshots.md)).
   `stops at the first reading beyond a bound and does not count that interval`.
 - Treating an empty `SOLANA_RPC_URL` as an endpoint fails
   `treats an empty SOLANA_RPC_URL (an unset workflow secret) as unset`.
+
+## 2026-11-27 (evening) — Is the Coinbase price the pool's price?
+
+The exit-time study runs on Coinbase BTC-USD / SOL-USD. `pnpm proxy-basis` compares
+that cross price with each Orca WBTC/SOL pool's price in the fee snapshots.
+
+### Wrong expectations
+
+- **"The pool's price" is one number.** At the first snapshot, pools of the same pair
+  sat between 8 and 198 bp above Coinbase, and three pools with no active liquidity
+  showed prices 8 to 45 % away from the market: the price an empty pool reports is the
+  last one a swap left behind. Any analysis that takes "the" pool price has to say which
+  pool, and has to skip pools with no liquidity.
+- **A level difference would bias exit times.** It would not: positions are centred on
+  their own pool's price, so only the change in basis between observations matters.
+  The tool reports both, and the report says which one is the test.
+
+### Proof the tests have teeth
+
+- `tests/research/proxy-basis.test.ts`: a reference bucket that closes after the
+  snapshot is present with a wrong price, so using it would fail; expected basis and
+  RMS figures were computed in Python, not with the module.

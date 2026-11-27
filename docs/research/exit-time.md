@@ -467,5 +467,38 @@ Coverage of the predicted 10th / 50th / 90th percentiles of T, all regimes toget
   Hourly snapshots of the public pools are collected from 2026-11-27
   ([ADR-0007](../adr/0007-fee-growth-snapshots.md)); the study waits for enough data.
 - **Drift and positions opened away from the centre.** All positions are centred.
-- **Other pairs and venues.** One pair, one venue's candles; a pool's own price can
-  differ from a centralised exchange's, most of all over short intervals.
+- **Other pairs and venues.** One pair, one venue's candles.
+
+## Is the Coinbase cross price the pool's price?
+
+Every figure above is measured on Coinbase BTC-USD / SOL-USD, not on an Orca pool. A
+position lives in one pool, whose price is moved by swaps and arbitrage, so the two can
+differ, and most at short intervals: the ±1 % results, where the model misses most,
+are also where a difference between venues would matter most.
+
+`pnpm proxy-basis <snapshots.jsonl …>` compares each pool's price in the fee snapshots
+([ADR-0007](../adr/0007-fee-growth-snapshots.md)) with the Coinbase cross price of the
+last minute that ended before the snapshot (`src/research/proxy-basis.ts`). Two
+quantities, kept apart:
+
+- the **level** of the basis, ln(pool / Coinbase). A constant offset does not change
+  exit times, since a position is centred on its own pool's price;
+- its **change** between consecutive snapshots of a pool, next to Coinbase's own log
+  return over the same interval. That is what the Coinbase path misses about the
+  pool's path, and what could bias exit times measured on it.
+
+**First reading, one snapshot (2026-11-27 18:10 UTC):**
+
+- The deepest pool (0.05 % fee tier, liquidity about 7.8 · 10³ in model units, three
+  orders of magnitude above the next one) was 13.7 bp above Coinbase. Part of that is
+  the up-to-a-minute lag between the Coinbase close and the snapshot.
+- The thin pools of the same pair ranged from 8 to 198 bp above Coinbase.
+- Three pools had no active liquidity; their prices (461 to 764 SOL per WBTC against
+  about 833) are what the last swap left behind, and are skipped.
+
+So at this one reading the deep pool tracks Coinbase to well under the ±1 % half-width,
+and "the pool's price" is not one number: thin pools of the same pair can sit
+200 bp away. One snapshot says nothing about the change in basis, which is the
+quantity that matters for exit times; that needs weeks of hourly snapshots. Until then
+the results above describe the Coinbase cross price, and transfer to a pool only
+to the extent that its basis is stable.

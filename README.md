@@ -53,6 +53,7 @@ pnpm record-fixture <wallet> <name>        # sanitised test fixture, no wallet s
 pnpm exit-time-study --from 2024-11-01 --to 2026-11-01 [--step minute]   # public prices
 pnpm exit-time-diagnostics --from 2024-11-01 --to 2026-11-01 [--seeds 20]  # what explains it
 pnpm exit-time-forecast --from 2024-11-01 --to 2026-11-01 --split 2025-11-01  # out-of-sample forecasts
+pnpm proxy-basis <snapshots.jsonl …>   # Orca pool prices vs. the Coinbase cross price
 ```
 
 All changes go through pull requests; `main` is protected. See
