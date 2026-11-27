@@ -85,3 +85,29 @@ export function toTokenAmounts(rawA: bigint, rawB: bigint, o: Orientation): Toke
   const b = Number(rawB) / 10 ** o.decimalsB;
   return o.baseIsA ? tokenAmounts(a, b) : tokenAmounts(b, a);
 }
+
+/** 2⁶⁴, the scale of Whirlpool Q64.64 fixed-point values. */
+const Q64 = 2 ** 64;
+
+/**
+ * A Whirlpool's cumulative fee growth as fees per unit of *model* liquidity,
+ * in token units of base and quote.
+ *
+ * On chain, `fee_growth_global_{a,b}` is Q64.64 fees in base units per unit of
+ * raw liquidity: a position with raw liquidity `L_raw` in range throughout
+ * earns `L_raw · Δg / 2⁶⁴` base units of A. With `L_raw = L_model · √(10^dA · 10^dB)`
+ * (see {@link toModelLiquidity}) that is `L_model · Δg / 2⁶⁴ · √(10^dB / 10^dA)`
+ * token units of A, and symmetrically for B.
+ *
+ * The result is an approximation (relative error ≤ 2⁻⁵²) for analysis only.
+ */
+export function feeGrowthPerModelLiquidity(
+  feeGrowthGlobalA: bigint,
+  feeGrowthGlobalB: bigint,
+  o: Orientation,
+): TokenAmounts {
+  const scale = Math.sqrt(10 ** o.decimalsB / 10 ** o.decimalsA);
+  const a = (Number(feeGrowthGlobalA) / Q64) * scale;
+  const b = Number(feeGrowthGlobalB) / Q64 / scale;
+  return o.baseIsA ? tokenAmounts(a, b) : tokenAmounts(b, a);
+}

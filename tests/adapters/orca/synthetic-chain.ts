@@ -82,6 +82,8 @@ export interface PoolSpec {
   readonly tickCurrentIndex: number;
   readonly feeGrowthGlobalA?: bigint;
   readonly feeGrowthGlobalB?: bigint;
+  /** Active liquidity (raw); 0 unless given. */
+  readonly liquidity?: bigint;
 }
 
 export interface PositionSpec {
@@ -131,7 +133,7 @@ export class SyntheticChain {
           feeTierIndexSeed: new Uint8Array([spec.tickSpacing, 0]),
           feeRate: spec.feeRate,
           protocolFeeRate: 1300,
-          liquidity: 0n,
+          liquidity: spec.liquidity ?? 0n,
           sqrtPrice: spec.sqrtPrice,
           tickCurrentIndex: spec.tickCurrentIndex,
           protocolFeeOwedA: 0n,
