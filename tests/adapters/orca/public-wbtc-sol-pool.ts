@@ -1,0 +1,48 @@
+/**
+ * Real, public protocol data: the Orca WBTC/SOL Whirlpool on the 0.05 % fee tier
+ * (fee tier index 8) and the two mints, as returned by `getMultipleAccounts`
+ * (base64, commitment `confirmed`) from https://api.mainnet-beta.solana.com at
+ * slot 474394565, observed 2026-11-27T03:11:10.161Z.
+ *
+ * Pool and mint accounts are public and say nothing about any wallet or
+ * position (AGENTS.md, "No private position data"); the pool's liquidity is the
+ * sum over all of its liquidity providers.
+ */
+
+export const PUBLIC_SLOT = 474394565n;
+
+export const PUBLIC_ACCOUNTS: readonly {
+  readonly address: string;
+  readonly owner: string;
+  readonly base64: string;
+}[] = [
+  {
+    address: 'B5EwJVDuAauzUEEdwvbuXzbFFgEYnUqqS37TUM1c4PQA',
+    owner: 'whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc',
+    base64:
+      'P5XRDOGAYwkT5EH4ORPKaLBjT7Al/eqohzfoQRDRJV41ezN33e4czf4IAAgA9AEUBSr7+2fKAgAAAAAAAAAAAACU' +
+      'qsuOQW7IAgAAAAAAAAAAup7+/+ASUAAAAAAAUQgAAAAAAAAGm4hX/quBhPtof2NGGMA12sQ53BrrO1WYoPAAAAAA' +
+      'AUfrYHqd7x3reliqslOaAxlS5+f4ev9e0mlttMuecDF0yBEWHIp4kXkGAAAAAAAAACM86kdNbLUT2tQhyC5oH4Dt' +
+      'dRJFXfuR/Gg2O5nZFWWCSaic3qiDfzYwT3X1BxdQl6v5WaurfbWEkPAJCDGThexsiHB5a7dQAAAAAAAAAAAAy/QI' +
+      'awAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
+      'AAAAui6/LwKaI7GKR1R798LZ7CubYjLuw+NoR9dh+omDPGYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
+      'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
+      'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
+      'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' +
+      'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
+  },
+  {
+    address: 'So11111111111111111111111111111111111111112',
+    owner: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',
+    base64:
+      'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJAQAAAAAAAAAAAAAAAAAAAAAAAAAA' +
+      'AAAAAAAAAAAAAAAAAAAAAA==',
+  },
+  {
+    address: '3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh',
+    owner: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',
+    base64:
+      'AQAAAJdz8e+O65iVdMpxBFsTrA0MEUaiThB5GX5TF1UZTdCWBvX6XzYAAAAIAQAAAAAAAAAAAAAAAAAAAAAAAAAA' +
+      'AAAAAAAAAAAAAAAAAAAAAA==',
+  },
+];
