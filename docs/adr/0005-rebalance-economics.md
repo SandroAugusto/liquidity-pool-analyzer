@@ -64,6 +64,16 @@ position data").
   tolerance across volatility regimes, with k estimated with a confidence interval;
   (2) exit times simulated on real hourly price paths match E[T] when σ is taken from
   a recent window, and the lag of a trailing window is quantified.
+- **Criterion 2, result (2026-11-26, [report](../research/exit-time.md)):** not met.
+  On public SOL per BTC prices, after correcting for checks at closes, narrow ranges
+  still last longer than E[T] at the median; a Gaussian walk does not reproduce this
+  and paths that keep the actual sizes of moves come close, though fat tails,
+  clustering and direction are not separated. At ±8 %
+  the median is within the method's noise but both tails are wider. The lag is
+  quantified: trailing 7- and 30-day σ (from hourly returns) both miss the next week's σ by a factor of about
+  1.4 (root mean square); the 7-day window overshoots after rises and the 30-day after
+  falls. E[T] should not be used as a point forecast of time in range; a distribution
+  conditioned on recent volatility is a candidate for the next study.
 
 ## Alternatives considered
 
