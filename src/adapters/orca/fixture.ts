@@ -14,7 +14,7 @@
  *   reveal the wallet's other holdings. The remaining lookups are re-chunked
  *   the way the reader will request them on replay.
  * Position, pool and mint addresses remain. Pool and mint addresses are
- * public protocol data; position addresses and accounts are **owner position
+ * public protocol data; position addresses and accounts are **private position
  * data** under AGENTS.md (a position leads to its NFT and to the wallet), so a
  * fixture of real positions is never committed. The CLI writes it outside the
  * repository; see `src/cli/record-fixture.ts`.

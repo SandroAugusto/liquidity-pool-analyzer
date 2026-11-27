@@ -21,7 +21,7 @@ const p = quotePerBase;
 
 /**
  * Synthetic ranges on an abstract pair, with round numbers chosen for the
- * tests. They do not describe any real position (AGENTS.md, "No owner position
+ * tests. They do not describe any real position (AGENTS.md, "No private position
  * data"). σ, fee and swap inputs are arbitrary.
  */
 const RANGE_A = createRange(p(90), p(100));

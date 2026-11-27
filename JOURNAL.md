@@ -5,8 +5,8 @@ they taught. Newest entries at the bottom. Prices are SOL per WBTC unless stated
 otherwise. "vs. hold" means position value + pending fees, compared with holding the
 deposited tokens, both valued in the quote token at the current price.
 
-The owner's own positions, readings and results are **not** recorded here. Where a
-lesson came from real use, the lesson is kept and the figures are not.
+Private position data (ranges, entries, deposits, readings, results) is never
+recorded here (AGENTS.md, "No private position data").
 
 ---
 
@@ -222,27 +222,12 @@ import lands), not the mechanism.
 Mutations re-run after the fix, each reverted: math rule back to a prefix check → 4
 failures; typo in the math glob → 9; adapter rule disabled → 6; signing ban dropped → 33.
 
-## 2026-10-24 — Owner position data removed, history rewritten
-
-The repository had recorded the owner's real positions: ranges, entries, deposits,
-readings and results, in the journal, in test fixtures and in one commit message. A
-range plus a date is enough to find a position on chain. All of it was removed, and
-the history was rewritten before the repository was moved:
-
-- tests use synthetic positions with expectations computed independently in Python;
-- earlier commits had their fixtures replaced by synthetic ones with independently
-  computed expectations;
-- the rule is now in AGENTS.md ("No owner position data") and CONTRIBUTING.md.
-
-Lesson: privacy is a property of the whole repository, including history, PR text and
-fixtures, not of the current tree. It is cheapest to state as a rule on day one.
-
 ## 2026-10-24 — Orca position reader (#5, ADR-0004)
 
 `pnpm positions <wallet>` reads every open Whirlpool position from chain into a
 protocol-neutral `PositionReading`. Built and tested offline: the Solana RPC hosts
 are blocked in the environment this was written in, so **nothing here has been run
-against real chain state yet**. Criteria 1 (CLI vs. UI) and 2–3 on real positions
+against real chain state yet**. Criteria 1 (CLI vs. UI) and 2–3 on live accounts
 wait for `pnpm record-fixture` to be run where RPC is reachable.
 
 ### Wrong expectations
@@ -330,7 +315,7 @@ of the raw Position and Whirlpool accounts (written from the IDL, no shared code
 the SDK) and with the protocol UI, on accounts that are never committed. Fees owed
 come from the tick-array
 fee-growth path rather than the stored `fee_owed` fields, which lag until the next
-liquidity change. Committed tests use synthetic chain state (AGENTS.md, "No owner
+liquidity change. Committed tests use synthetic chain state (AGENTS.md, "No private
 position data").
 
 One diagnostics gap: behind an HTTPS proxy the CLI fails with a bare
@@ -376,8 +361,7 @@ Review of #1 found that `pnpm record-fixture` would write position fixtures to
 fixture would be one `git add -A` away from being committed. Two doc comments
 also contradicted AGENTS.md, calling position addresses "public on-chain data". A
 position leads to its NFT and to the wallet, so leaving the wallet out of the file
-does not hide it. This repository already had its history rewritten once for the same
-class of leak.
+does not hide it.
 
 ### Wrong expectations
 
@@ -405,53 +389,6 @@ Each mutation applied, `tests/fixture-privacy.test.ts` run, reverted:
 
 - `tests/fixtures/` removed from `.gitignore` → 2 failures;
 - the guard's forbidden patterns emptied → 2 failures.
-
-## 2026-11-26 (evening) — History rewritten a second time
-
-A review before making the repository public found owner data that the first rewrite
-had missed, and some that arrived after it. An independent audit of the result then
-found more. Every version of every file and every commit message was swept, and the
-leaks fell into five kinds:
-
-1. **Aggregates are results.** ADR-0005, `src/math/rebalance.ts` and this journal
-   carried statistics from a private sample of the owner's historical positions. None
-   of it locates a position, but AGENTS.md forbids the owner's _results_, not only
-   positions. It was reviewed as acceptable and merged; it was not.
-2. **Dates and labels survive substituted numbers.** The first rewrite replaced fixture
-   figures but kept dated UI readings, comments that tied fixtures to real positions,
-   observed figures in older journal entries, and commit messages that described them.
-3. **Inputs can be readings.** Test inputs (σ, fee rates, a fee constant) matched real
-   readings instead of being chosen for the test.
-4. **A value can hide in another unit.** A pair of tick indices in an adapter test was
-   a real range, quantised to the pool's ticks; a half-width in a list of round numbers
-   was a real range's half-width; a pool price written as its inverse matched a real
-   reading. A search for the literal values found none of them.
-5. **Examples and dates are not neutral.** A half-width used as the documentation
-   example matched a real range, so the examples were changed too. Notes that a check
-   against real accounts had been done, which date the existence of a position, became
-   instructions for how to check; the commit that only recorded such a check is gone.
-
-Fixtures are now abstract round numbers with expectations computed independently in
-Python; the empirical claims in ADR-0005 are stated as unvalidated until they are
-measured on public data. Every other commit keeps its date, order and message (four messages reworded), and
-every commit after the initial one passes its own tests and typecheck.
-
-This commit also adds what was checked during the review: a seeded Monte Carlo test
-of the exit time, and the mathematical checks in ADR-0005.
-
-Lessons:
-
-1. **A privacy review covers history, messages and PR text, with a written
-   checklist**, not the current tree read once. The checklist: real values from
-   private records; the same values after unit changes (ticks, inverses, half-widths,
-   derived constants); dates next to readings; words that label a figure as observed;
-   aggregates of private data; test inputs and examples that were not chosen for the
-   test.
-2. **"It does not identify a position" is the wrong test.** The rule is "nothing of
-   the owner's", and the reviewer applies the rule as written.
-3. **The audit is done by someone who did not do the cleaning, and repeated until it
-   finds nothing.** Two independent audits found what the author of the clean-up did
-   not, including a value restated in the entry that described its removal.
 
 ## 2026-11-26 (night) — Exit times on public prices (ADR-0005 criterion 2, ADR-0006)
 

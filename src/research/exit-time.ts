@@ -10,7 +10,7 @@
  * observed fraction of exits by c · E[T] can be compared with
  * 1 − S(c) (`exitSurvivalFromCentre`).
  *
- * No owner data: positions are synthetic, prices are public (AGENTS.md).
+ * No private data: positions are synthetic, prices are public (AGENTS.md).
  */
 
 import {

@@ -1,5 +1,5 @@
 /**
- * Real position fixtures are owner position data (AGENTS.md) and must never be
+ * Real position fixtures are private position data (AGENTS.md) and must never be
  * committed. These tests prove each line of defence works: the path is ignored,
  * and the guard script rejects a fixture that is staged anyway.
  */

@@ -64,8 +64,8 @@ The body explains **why**, not what. The diff already says what.
   `vitest.config.ts`; lowering them requires an ADR.
 - Where possible, test against **real public data** (pool accounts, price series) and
   record the provenance in the test file. For positions, use synthetic fixtures with
-  expectations computed independently of the implementation. The owner's positions are
-  never test data (AGENTS.md, "No owner position data").
+  expectations computed independently of the implementation. Private position data is
+  never test data (AGENTS.md, "No private position data").
 - A failing test that turns out to encode a wrong expectation is a finding, not a
   nuisance. Fix the expectation, and write the lesson down in `JOURNAL.md`.
 

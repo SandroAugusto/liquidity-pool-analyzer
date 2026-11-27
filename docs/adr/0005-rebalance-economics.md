@@ -29,7 +29,7 @@ of 1/4 up to ±4 % half-width and within 9 % at ±40 %; the loss is the same at 
 edges; and a Monte Carlo of a driftless walk reproduces E[T] = hL² / σ² from the
 centre. The empirical parts, whether fees scale as σ / hL and what k is, are **not yet
 validated**. They are to be measured on public data only: hourly public prices and
-public pool volume and fee data, with synthetic positions (AGENTS.md, "No owner
+public pool volume and fee data, with synthetic positions (AGENTS.md, "No private
 position data").
 
 ## Decision

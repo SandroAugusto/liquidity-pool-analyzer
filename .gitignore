@@ -7,7 +7,7 @@ coverage/
 !.env.example
 .DS_Store
 
-# Real position fixtures are owner data (AGENTS.md); record-fixture writes them
+# Real position fixtures are private data (AGENTS.md); record-fixture writes them
 # outside the repository. Ignored here as well, as a second line of defence.
 tests/fixtures/
 *.fixture.json

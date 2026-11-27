@@ -3,7 +3,7 @@
  * live chain and writes the sanitised port traffic to `<dir>/<name>.json`
  * (see `src/adapters/orca/fixture.ts`).
  *
- * A fixture of real positions is owner position data (AGENTS.md): it names
+ * A fixture of real positions is private position data (AGENTS.md): it names
  * the positions read, and a position leads to its NFT and to the wallet on
  * chain. It is therefore written **outside the repository**: to
  * `$LPA_FIXTURE_DIR`, or by default to {@link DEFAULT_FIXTURE_SUBDIR} under the

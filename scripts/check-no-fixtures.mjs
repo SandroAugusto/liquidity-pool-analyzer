@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Fails if a position fixture is staged, tracked, or anywhere in the history
- * being checked. Real position fixtures are owner position data (AGENTS.md)
+ * being checked. Real position fixtures are private position data (AGENTS.md)
  * and must never reach the repository; `pnpm record-fixture` writes them
  * outside it. This is the backstop for a fixture copied in by hand or added
  * with `git add -f`.
@@ -36,7 +36,7 @@ if (paths === undefined) {
 const found = [...new Set(paths().filter((p) => FORBIDDEN.some((re) => re.test(p))))];
 if (found.length > 0) {
   process.stderr.write(
-    `Position fixtures must never be committed (AGENTS.md, "No owner position data"):\n${found
+    `Position fixtures must never be committed (AGENTS.md, "No private position data"):\n${found
       .map((p) => `  ${p}`)
       .join('\n')}\nRemove them from the index and history before pushing.\n`,
   );

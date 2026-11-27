@@ -6,7 +6,7 @@
 ## Context
 
 ADR-0005 leaves its empirical claims unvalidated until they are measured on public
-data with synthetic positions (AGENTS.md, "No owner position data"). The first of
+data with synthetic positions (AGENTS.md, "No private position data"). The first of
 them, exit times against E[T] (criterion 2), needs long price histories of the pool's
 pair at hourly and finer resolution. Pools do not keep such a history on chain, and
 reconstructing it from swaps needs an indexer this project does not have.

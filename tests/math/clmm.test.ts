@@ -24,7 +24,7 @@ import { InvalidPriceError, quotePerBase } from '../../src/math/price.js';
 
 /**
  * Synthetic positions on an abstract pair, with round numbers chosen for the
- * tests. They do not describe any real position (AGENTS.md, "No owner
+ * tests. They do not describe any real position (AGENTS.md, "No private
  * position data"). Expected values were computed independently in Python
  * from the closed-form formulas, not by running this implementation.
  *
