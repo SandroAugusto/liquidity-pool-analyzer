@@ -23,6 +23,10 @@ computed expectations and public market data. A read-only Orca Whirlpool positio
 reader exists (`pnpm positions`,
 [ADR-0004](./docs/adr/0004-orca-sdk-and-adapter-boundary.md)); it is tested offline
 against synthetic chain state.
+A first study of exit times on public prices with synthetic positions is in
+[`docs/research/exit-time.md`](./docs/research/exit-time.md)
+([ADR-0006](./docs/adr/0006-public-candles-for-research.md)): the model's expected
+time in range is not yet reliable as a forecast.
 Persistence, alerts and the rule engine are not yet started.
 See [`JOURNAL.md`](./JOURNAL.md) for the running log and
 [`docs/adr`](./docs/adr) for design decisions.
@@ -44,6 +48,7 @@ pnpm test:watch
 
 pnpm positions <wallet> [--quote <mint>]   # read-only; RPC from SOLANA_RPC_URL
 pnpm record-fixture <wallet> <name>        # sanitised test fixture, no wallet stored
+pnpm exit-time-study --from 2024-11-01 --to 2026-11-01 [--step minute]   # public prices
 ```
 
 All changes go through pull requests; `main` is protected. See
