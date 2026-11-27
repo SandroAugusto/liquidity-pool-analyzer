@@ -2,19 +2,19 @@
 
 Decision-support tooling for concentrated-liquidity (CLMM) positions.
 
-Most LP dashboards show an APR. This project answers the questions the APR hides:
+Most LP dashboards show an APR. This project is built to answer the questions the APR
+hides. Where each one stands today:
 
-- **Am I beating hold?** Position value plus collected fees, measured against simply
-  holding the deposited tokens — in the pool's own price ratio, not in USD, so that
-  market beta is not mistaken for pool performance.
-- **What is this range actually costing me?** Divergence loss per re-centre cycle,
-  amortised over the expected time in range given the pair's realised volatility.
-- **Should I act?** Explicit, testable rules for when to wait, re-centre or exit —
-  and a record of how those rules performed.
+| Question                                    | What answering it takes                                                                                                                                                              | Status                                                                                                                                                                                                                                                       |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Am I beating hold?**                      | Position value plus collected fees against simply holding the deposited tokens, in the pool's own price ratio, not in USD, so that market beta is not mistaken for pool performance. | Math done and tested; read-only position reader exists. No report yet.                                                                                                                                                                                       |
+| **What is this range actually costing me?** | Divergence loss per re-centre cycle, amortised over the expected time in range.                                                                                                      | Divergence math done. Expected time in range: **the model is not reliable as a forecast** ([exit-time study](./docs/research/exit-time.md)); empirical quantiles are close to calibrated at ±1 % to ±4 %. Fees in range: data collection started 2026-11-27. |
+| **Should I act?**                           | Explicit, testable rules for when to wait, re-centre or exit, and a record of how they performed.                                                                                    | Not started.                                                                                                                                                                                                                                                 |
 
-The project is developed for Orca (Solana), with Uniswap v3
-(Base) planned as the second integration. Everything here is validated against
-on-chain state before it is trusted.
+The project is developed for Orca (Solana), with Uniswap v3 (Base) planned as the second
+integration. Position and pool readings are validated against on-chain state; the
+exit-time research runs on public Coinbase prices, and how far it transfers to a pool is
+checked separately against the project's own pool snapshots.
 
 ## Status
 
