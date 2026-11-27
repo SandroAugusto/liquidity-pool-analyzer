@@ -49,6 +49,7 @@ pnpm test:watch
 pnpm positions <wallet> [--quote <mint>]   # read-only; RPC from SOLANA_RPC_URL
 pnpm record-fixture <wallet> <name>        # sanitised test fixture, no wallet stored
 pnpm exit-time-study --from 2024-11-01 --to 2026-11-01 [--step minute]   # public prices
+pnpm exit-time-diagnostics --from 2024-11-01 --to 2026-11-01 [--seeds 20]  # what explains it
 ```
 
 All changes go through pull requests; `main` is protected. See

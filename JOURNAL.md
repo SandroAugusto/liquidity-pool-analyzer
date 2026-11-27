@@ -435,3 +435,42 @@ survival function of the exit time from the centre. Report:
   seeded Monte Carlo of the mean exit time.
 - A separate Python script, outside the repository, reproduced the medians to two
   decimals.
+
+## 2026-11-26 (late night) — What explains the exit-time differences
+
+`pnpm exit-time-diagnostics` adds variance ratios against a sign-randomised null,
+surrogate paths (signs randomised, returns shuffled, Gaussian walk; 40 seeds each),
+tails against the same surrogates, the two σ windows on the same opening dates, and
+trailing σ against the σ of the following week. Results in the report's diagnostics
+section.
+
+### Wrong expectations
+
+1. **That mean reversion explained the narrow ranges.** Variance ratios below 1
+   made it the obvious candidate. At ±1 % on hourly data, randomising the signs of
+   returns leaves the median at 1.15 (1.10 with the actual σ) against an actual 1.14,
+   shuffled returns give 1.02 and a Gaussian walk 0.77: the sizes of moves matter most
+   there. At ±2 % and on minute data the result depends on how σ is estimated on the
+   altered paths, so direction is not ruled out.
+2. **That a first draft of these diagnostics was ready to publish.** An independent
+   review found it overstated four causes: clustering as the cause when fat tails could
+   explain as much, mean reversion "at every horizon" without a null, a shift of the model's median
+   under the estimator that was inside the noise, and "calm periods" for what was a
+   fall in volatility. The fixes added a null for the variance ratio, a second σ
+   convention for the surrogates, and a tail table. A second review then found the
+   revised claims still broader than the tables at other widths and on minute data;
+   they now say what is and is not separated.
+3. **That 120 days of minute data were the better evidence.** For the measurement at
+   ±1 % they are, but across seeds the Gaussian walk's ±1 % median spans 0.62–1.00
+   (10th–90th percentile) on 120 days: too short for most conclusions.
+4. **That a long window lags when volatility rises.** It overshoots after volatility
+   falls, by about 30 %; after a rise it is nearly unbiased and the 7-day window
+   overshoots by about 45 %, probably partly regression to the mean of its own noise
+   (not tested).
+
+### Proof the tests have teeth
+
+- Never flipping a sign fails
+  `sign flipping keeps each return size in place and the first price and times`.
+- Pairing returns by position instead of by time fails `never bridges a gap`.
+- Ignoring `sigmaFrom` fails `can take σ from another series with the same times`.
