@@ -47,7 +47,13 @@ attention for that failure mode.
   accounts, price series). Fixtures recorded from a live wallet stay local and are
   never committed.
 
-## Review priorities, in order
+## Code Review Rules
+
+The conventions above are review rules: a violation of any of them is a finding.
+For security-specific checks (the read-only guarantee, privacy of positions,
+secrets, workflows), see `SECURITY.md`.
+
+### Review priorities, in order
 
 1. **Correctness of the math and its assumptions.** Does the formula match the
    documented model? Are edge cases (price at or beyond a bound, zero liquidity,
@@ -62,7 +68,7 @@ attention for that failure mode.
 5. **Readability**, only after the above. Do not comment on naming or style unless it
    causes one of the issues above or violates the lint config.
 
-## How to report
+### How to report
 
 - Lead with the most severe finding. One finding per comment, anchored to a line.
 - State the failure scenario concretely: _input X → output Y, expected Z_.
@@ -72,7 +78,7 @@ attention for that failure mode.
   `— automated review (codex)`. Agents post with the owner's GitHub identity; the
   signature is the only way the history shows which judgement was not human.
 
-### Severity is assigned only after reproduction
+#### Severity is assigned only after reproduction
 
 A finding's severity, and whether it blocks merge, is decided **after** you have
 reproduced the failure, not before. Reasoning about code is how you find a
