@@ -103,6 +103,36 @@ describe('simulateCentredPositions', () => {
     expect(outcomes[0]?.sigmaPerDay).toBeCloseTo(0.01 * Math.sqrt(24 / 23) * Math.sqrt(24), 12);
   });
 
+  it('can take σ from another series with the same times', () => {
+    const calm: PriceSeries = {
+      timesSeconds: daily.timesSeconds,
+      prices: daily.prices.map((_, i) => (i === 1 ? Math.exp(0.05) : 1)),
+    };
+    const [own] = simulateCentredPositions(daily, options);
+    const [borrowed] = simulateCentredPositions(daily, { ...options, sigmaFrom: calm });
+    // Calm returns +0.05 and −0.05: σ = √0.005, half the actual √0.02.
+    expect(borrowed?.sigmaPerDay).toBeCloseTo(Math.sqrt(0.005), 12);
+    expect(borrowed?.exitDays).toBe(own?.exitDays);
+    expect(() =>
+      simulateCentredPositions(daily, {
+        ...options,
+        sigmaFrom: { timesSeconds: [1], prices: [1] },
+      }),
+    ).toThrow(RangeError);
+    expect(() =>
+      simulateCentredPositions(daily, {
+        ...options,
+        sigmaFrom: { timesSeconds: daily.timesSeconds.map((t) => t + 1), prices: daily.prices },
+      }),
+    ).toThrow(RangeError);
+    expect(() =>
+      simulateCentredPositions(daily, {
+        ...options,
+        sigmaFrom: { timesSeconds: daily.timesSeconds, prices: daily.prices.slice(1) },
+      }),
+    ).toThrow(/one price per time/);
+  });
+
   it('returns nothing for an empty series', () => {
     expect(simulateCentredPositions({ timesSeconds: [], prices: [] }, options)).toEqual([]);
   });
