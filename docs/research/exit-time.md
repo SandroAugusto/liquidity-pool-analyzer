@@ -461,12 +461,11 @@ Coverage of the predicted 10th / 50th / 90th percentiles of T, all regimes toget
 
 ## Not covered
 
-- **Fees.** Criterion 1 of ADR-0005 (fees in range proportional to σ / hL) needs pool
-  volume and liquidity by tick over time; that is not studied here. Pool-level daily
-  volume and TVL (a pool-wide fee rate, not the rate in a given range) may be
-  available from Orca's public statistics API; that has not been checked from this
-  environment. Liquidity by tick over time needs an on-chain history (an indexer or an
-  archive RPC).
+- **Fees.** Criterion 1 of ADR-0005 (fees in range proportional to σ / hL). This
+  report assumed it needs liquidity by tick over time; it does not, because a centred
+  position's fees while in range follow from the pool's cumulative fee growth alone.
+  Hourly snapshots of the public pools are collected from 2026-11-27
+  ([ADR-0007](../adr/0007-fee-growth-snapshots.md)); the study waits for enough data.
 - **Drift and positions opened away from the centre.** All positions are centred.
 - **Other pairs and venues.** One pair, one venue's candles; a pool's own price can
   differ from a centralised exchange's, most of all over short intervals.

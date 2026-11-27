@@ -27,6 +27,8 @@ A first study of exit times on public prices with synthetic positions is in
 [`docs/research/exit-time.md`](./docs/research/exit-time.md)
 ([ADR-0006](./docs/adr/0006-public-candles-for-research.md)): the model's expected
 time in range is not yet reliable as a forecast.
+Hourly fee snapshots of the public WBTC/SOL pools are collected for the fee study
+([ADR-0007](./docs/adr/0007-fee-growth-snapshots.md)).
 Persistence, alerts and the rule engine are not yet started.
 See [`JOURNAL.md`](./JOURNAL.md) for the running log and
 [`docs/adr`](./docs/adr) for design decisions.

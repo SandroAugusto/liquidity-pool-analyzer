@@ -1,6 +1,6 @@
 # ADR-0006: Public exchange candles as the research data source
 
-- **Status:** Accepted
+- **Status:** Accepted; the fee-data alternatives below are superseded by ADR-0007
 - **Date:** 2026-11-26
 
 ## Context
