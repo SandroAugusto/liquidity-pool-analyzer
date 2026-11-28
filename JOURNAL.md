@@ -530,3 +530,37 @@ branch ([ADR-0007](./docs/adr/0007-fee-growth-snapshots.md)).
   `stops at the first reading beyond a bound and does not count that interval`.
 - Treating an empty `SOLANA_RPC_URL` as an endpoint fails
   `treats an empty SOLANA_RPC_URL (an unset workflow secret) as unset`.
+
+## 2026-11-27 (evening) — Is the Coinbase price the pool's price?
+
+The exit-time study runs on Coinbase BTC-USD / SOL-USD. `pnpm proxy-basis` compares
+that cross price with each Orca WBTC/SOL pool's price in the fee snapshots.
+
+### Wrong expectations
+
+- **"The pool's price" is one number.** At the first snapshot, pools of the same pair
+  sat between 8 and 198 bp above Coinbase, and three pools with no active liquidity
+  showed prices 8 to 45 % away from the market: the price an empty pool reports is the
+  last one a swap left behind. Any analysis that takes "the" pool price has to say which
+  pool, and has to skip pools with no liquidity.
+- **A level difference would bias exit times.** It would not: positions are centred on
+  their own pool's price, so only the change in basis between observations matters.
+  The tool reports both, and the report says which one is the test.
+
+- **A snapshot that parses is a snapshot of the pair.** The snapshot format accepts any
+  base and quote mints, and the comparison assumed WBTC base, SOL quote without checking.
+  A reading quoted the other way round (1/800 WBTC per SOL against 800 SOL per BTC, the
+  same market level) was reported as a basis of −133692 bp with exit code 0 (review of
+  #8). A reference series has no pair of its own, so the caller now states which pair it
+  prices and every snapshot is checked against it; a reversed reading is refused, not
+  inverted.
+- **A length check validates a price series.** `matchBasis` took reference prices as
+  plain numbers: 0 gave an infinite basis and −1 gave `NaN`, both carried into the
+  summary (review of #8). Reference prices now pass through `quotePerBase` and the
+  observations keep the branded type.
+
+### Proof the tests have teeth
+
+- `tests/research/proxy-basis.test.ts`: a reference bucket that closes after the
+  snapshot is present with a wrong price, so using it would fail; expected basis and
+  RMS figures were computed in Python, not with the module.
